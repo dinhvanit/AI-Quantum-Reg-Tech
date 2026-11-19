@@ -15,14 +15,13 @@
 | Styling | **Tailwind CSS v4** | Utility-first, token khai báo bằng CSS variables trong `src/app/globals.css` (không có `tailwind.config`) |
 | UI components | **shadcn/ui** style `base-nova` (**Base UI** `@base-ui/react` bên dưới, không phải Radix) | Card, Table, Tabs, Slider, Select, Checkbox, Badge, Progress, Tooltip, Sonner… |
 | Icon | **lucide-react** | Bộ icon đồng bộ với shadcn |
-| Biểu đồ cơ bản | **Recharts 3** | Radar ESG, Donut phân bổ vốn, Bar backtest |
-| Biểu đồ nâng cao | **Apache ECharts 6** (`echarts-for-react/lib/core`, import theo module) | Gauge Z-Score, Heatmap ma trận QUBO (Heatmap rủi ro: chưa làm) |
+| Biểu đồ | **Apache ECharts 6** (`echarts-for-react/lib/core`, import theo module) – thư viện biểu đồ **duy nhất** | Gauge Z-Score, Radar ESG, Donut phân bổ vốn, Bar so sánh lợi nhuận, Heatmap ma trận QUBO (Heatmap rủi ro: chưa làm). Bỏ Recharts (2026-11-19) vì không có gauge/heatmap |
 | Đọc PDF / OCR (Cổng 2) | **pdf.js** (`pdfjs-dist` 6 – bản đã vá lỗi chạy mã khi mở PDF độc hại) + **Tesseract.js 7** + `@tesseract.js-data/vie` | Chạy trong trình duyệt; worker, lõi WASM, mô hình tiếng Việt tự host ở `public/vendor` |
 | State | **Zustand 5** (`src/store/portfolio.ts`) | Tham số α β γ δ, solver, danh sách DN theo dõi |
 | Font | **Be Vietnam Pro** (UI), **JetBrains Mono** (số liệu) qua `next/font` | Hỗ trợ tiếng Việt đầy đủ |
-| Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `src/data/` | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
+| Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `data/generated/` (dùng chung cho Next.js qua alias `@data/*` và FastAPI) | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
 | Xuất PDF | Trang `/report/[ticker]` + CSS `@media print` → *Save as PDF* | Không cần thư viện PDF |
-| Deploy | **Vercel** | Preview link cho mỗi branch/PR |
+| Deploy | **Vercel** (frontend) + container (FastAPI) | Deploy riêng; Vercel có preview link cho mỗi branch/PR – checklist: `docs/DEPLOY.md` |
 | Code quality | ESLint (`eslint-config-next`) | Có sẵn khi khởi tạo Next.js (Prettier chưa cài) |
 | Test | **Vitest** (unit) + **Playwright** (e2e) | `npm test`, `npm run test:e2e` – xem mục 6 |
 | (Tuỳ chọn) Backend | **FastAPI** + SciPy (COBYLA) | Chạy tối ưu danh mục "live" khi kéo slider |
@@ -44,7 +43,7 @@ npx shadcn@latest init -d
 npx shadcn@latest add button card badge table tabs slider dialog input progress \
   sheet tooltip separator skeleton sonner dropdown-menu select alert checkbox label
 
-npm i recharts echarts echarts-for-react zustand lucide-react
+npm i echarts echarts-for-react zustand lucide-react
 npm i pdfjs-dist@^6.3.289 tesseract.js@7 @tesseract.js-data/vie   # OCR Cổng 2
 npm i -D @types/node@^22 vitest @playwright/test exceljs   # @types/node ^22 để tương thích Vitest; exceljs đọc file Excel dữ liệu
 npx playwright install chromium
@@ -64,10 +63,12 @@ src/
 │   ├── globals.css               # Design token (UI_DESIGN §2) + style in A4
 │   ├── page.tsx                  # Dashboard tổng quan
 │   ├── loading.tsx · error.tsx · not-found.tsx
-│   ├── company/[ticker]/page.tsx # Cổng 1 – chi tiết doanh nghiệp (+ loading.tsx)
-│   ├── private/page.tsx          # Cổng 2 – upload bảo mật (mock)
+│   ├── stocks/page.tsx           # Danh sách cổ phiếu (universe, đăng ký mã pending_data)
+│   ├── company/[ticker]/page.tsx # Cổng 1 – chi tiết doanh nghiệp + OSINT scan (+ loading.tsx)
+│   ├── private/page.tsx          # Cổng 2 – PDF/OCR trong trình duyệt, LLM opt-in
 │   ├── portfolio/page.tsx        # Tối ưu danh mục + tab Lõi Lượng tử (+ loading.tsx)
-│   └── report/[ticker]/page.tsx  # Báo cáo thẩm định (in PDF) (+ loading.tsx)
+│   ├── report/[ticker]/page.tsx  # Báo cáo thẩm định (in PDF) (+ loading.tsx)
+│   └── api/                      # Route server cùng origin – chỉ proxy tới FastAPI (universe, osint/scan, private/extract)
 ├── components/
 │   ├── ui/                       # shadcn (tự sinh; slider.tsx có thêm prop getAriaLabel)
 │   ├── charts/                   # ZScoreGauge, EsgRadar, AllocationDonut, BacktestChart, QuboHeatmap, EmptyChart
@@ -77,8 +78,8 @@ src/
 │   ├── portfolio/                # PortfolioOptimizer, WeightSliders, WeightTable, CompareTable, QuantumCore
 │   ├── report/                   # ReportSection, PrintButton
 │   ├── common/                   # InfoTip, PageSkeleton
+│   ├── stocks/                   # StockUniverse
 │   └── layout/                   # Sidebar, Header, GatewayBadge
-├── data/                         # *.json SINH TỪ data/QuantumRegTech_Data.xlsx (npm run data, không commit)
 ├── lib/
 │   ├── api.ts                    # ⭐ Lớp truy cập dữ liệu duy nhất
 │   ├── types.ts                  # TypeScript types (khớp docs/DATA.md §5)
@@ -94,9 +95,23 @@ src/
 └── store/
     └── portfolio.ts              # Zustand store
 data/
-└── QuantumRegTech_Data.xlsx      # ⭐ Nguồn dữ liệu duy nhất (xem docs/DATA.md)
+├── QuantumRegTech_Data.xlsx      # ⭐ Nguồn dữ liệu duy nhất (xem docs/DATA.md)
+└── generated/                    # *.json SINH TỪ file Excel (npm run data, không commit) – hợp đồng dữ liệu chung cho Next.js và FastAPI
+backend/                          # FastAPI + LangGraph (Python, deploy riêng – xem backend/README.md)
+├── app/
+│   ├── main.py                   # Composition root
+│   ├── api/routes/               # /api/v1/* (companies, analysis, osint, private)
+│   ├── agents/                   # LangGraph: osint_graph.py (Firecrawl), document_graph.py (Cổng 2 opt-in)
+│   ├── core/config.py            # Đọc backend/.env (fallback .env.local ở root), đường dẫn data/generated
+│   ├── domain/ · repositories/   # Hợp đồng Pydantic; đọc JSON workbook, registry SQLite pending_data
+│   ├── services/                 # Neo4j (read-only), market_data/ssi.py (chưa kích hoạt)
+│   └── ingestion/ · seed_graph.py # CLI chủ động: tải lịch sử SSI, seed Neo4j demo
+├── tests/                        # pytest – provider giả lập
+├── .env.example                  # Biến của FastAPI (key dịch vụ, CORS) – copy thành backend/.env
+└── Dockerfile                    # Build từ root repo sau npm run data (context lọc bởi /.dockerignore)
+specs/ · .specify/                # Spec Kit: đặc tả tính năng, constitution
 scripts/
-├── build-data.mjs                # Excel → src/data/*.json (chạy trước dev / build / test)
+├── build-data.mjs                # Excel → data/generated/*.json (chạy trước dev / build / test)
 ├── copy-ocr-assets.mjs           # node_modules → public/vendor (worker pdf.js, lõi Tesseract, mô hình vie) – không commit
 └── make-sample-pdf.mjs           # Tạo BCTC mẫu (DN giả định) để thử Cổng 2
 tests/
@@ -107,7 +122,7 @@ tests/
 
 ## 5. Lớp `api.ts`
 
-Mỗi hàm có 2 nhánh: `USE_MOCK` (mặc định) đọc JSON trong `src/data/` (sinh từ file Excel – xem `docs/DATA.md` §1) với độ trễ giả lập; ngược lại gọi `NEXT_PUBLIC_API_URL`. `api.ts` import JSON tĩnh (không đọc Excel lúc chạy) nên dùng được cả ở Server lẫn Client Component và trang vẫn prerender tĩnh.
+Mỗi hàm có 2 nhánh: `USE_MOCK` (mặc định) đọc JSON trong `data/generated/` (alias `@data/*`, sinh từ file Excel – xem `docs/DATA.md` §1) với độ trễ giả lập; ngược lại gọi `NEXT_PUBLIC_API_URL`. `api.ts` import JSON tĩnh (không đọc Excel lúc chạy) nên dùng được cả ở Server lẫn Client Component và trang vẫn prerender tĩnh.
 
 ```ts
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
@@ -133,12 +148,12 @@ export async function getCompanies(): Promise<Company[]> {
 
 Trang không gọi thẳng nhiều hàm lẻ mà dùng `getOverviews()` / `getOverview(ticker)` trong `lib/overview.ts`.
 
-Quy tắc: **component không bao giờ `import` trực tiếp từ `src/data/`**.
+Quy tắc: **component không bao giờ `import` trực tiếp từ `@data/*`** (`data/generated/`).
 
 ## 6. Quy ước
 
 - Branch: `feat/<màn-hình>`, `fix/<mô-tả>`; merge qua PR để có Vercel preview.
-- Màu sắc: chỉ dùng token (`bg-primary`, `text-risk-distress`…), không hard-code mã hex trong component. Thư viện vẽ canvas (ECharts) lấy màu qua `useCssVars()`; Recharts (SVG) dùng thẳng `var(--token)`.
+- Màu sắc: chỉ dùng token (`bg-primary`, `text-risk-distress`…), không hard-code mã hex trong component. ECharts vẽ canvas nên lấy màu qua `useCssVars()`; tooltip và bảng màu chuỗi dùng chung `components/charts/echarts-base.ts`. Mỗi biểu đồ có `aria-label` nêu số liệu (canvas không đọc được bằng trình đọc màn hình).
 - Số liệu: luôn qua `format.ts` (`formatPct(0.0995) → "9,95%"`, dấu phẩy thập phân kiểu Việt). Ô `"TODO"` trong JSON → hiển thị "—"; biểu đồ thiếu số liệu → `EmptyChart`, **không tự điền số**.
 - Mọi màn hình phải có trạng thái **loading (Skeleton)**, **empty**, **error**: dùng `loading.tsx`, `error.tsx`, `not-found.tsx` của App Router.
 - Trang dữ liệu là Server Component gọi `api.ts`; phần tương tác (biểu đồ, slider, upload) tách thành Client Component (`"use client"`).
@@ -147,7 +162,7 @@ Quy tắc: **component không bao giờ `import` trực tiếp từ `src/data/`*
 
 ```bash
 npm run lint && npx tsc --noEmit
-npm run data        # Excel → src/data/*.json (tự chạy trước dev / build / test)
+npm run data        # Excel → data/generated/*.json (tự chạy trước dev / build / test)
 npm run assets      # tài nguyên OCR → public/vendor (tự chạy sau install, trước dev / build)
 npm test            # Vitest – tests/unit (đối chiếu Z, Ri, lợi nhuận, RFin,Total, Σw, kết quả danh mục với Phụ lục B)
 npm run test:e2e    # Playwright – tự build + chạy server cổng 3100, test tests/e2e

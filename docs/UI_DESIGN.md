@@ -201,7 +201,7 @@ Cổng 2: /private ──► upload PDF → OCR/parser cục bộ → [opt-in] L
 | `CompanyCard` | – | shadcn Card + Badge | default, hover, alert | ⏳ |
 | `ZScoreGauge` | `components/charts` | ECharts gauge | Safe / Grey / Distress; mô hình Z / Z'; không có số (không kim, "—") | ✅ |
 | `EsgDisclosure` | `components/company` | Meter + shadcn Tabs + Table | có / thiếu dữ liệu, hạng / không xếp hạng | ✅ |
-| `EsgRadar` | `components/charts` | Recharts RadarChart | 1 DN ✅ / so sánh 2 DN ⏳; rỗng khi pillars TODO ✅ | ✅ |
+| `EsgRadar` | `components/charts` | ECharts radar | 1 DN ✅ / so sánh 2 DN ⏳; rỗng khi pillars TODO ✅ | ✅ |
 | `RiskHeatmap` | – | ECharts heatmap | | ⏳ |
 | `GreenwashingEvidence` | `components/company` | Card + Badge | có / không có mâu thuẫn | ✅ |
 | `OsintTimeline` | `components/company` | custom + Tooltip | rỗng / có sự kiện / ngày chưa rõ tháng | ✅ |
@@ -209,9 +209,9 @@ Cổng 2: /private ──► upload PDF → OCR/parser cục bộ → [opt-in] L
 | `XTable` | `components/company` | shadcn Table | X1–X5 (TODO → "—") | ✅ |
 | `WeightSliders` | `components/portfolio` | shadcn Slider + Select | | ✅ |
 | `WeightTable` | `components/portfolio` | shadcn Table | | ✅ |
-| `AllocationDonut` | `components/charts` | Recharts PieChart + bảng legend | hover tooltip | ✅ |
+| `AllocationDonut` | `components/charts` | ECharts pie (donut) + bảng legend | hover tooltip | ✅ |
 | `CompareTable` | `components/portfolio` | shadcn Table | | ✅ |
-| `BacktestChart` | `components/charts` | Recharts BarChart | | ✅ |
+| `BacktestChart` | `components/charts` | ECharts bar | | ✅ |
 | `QuboHeatmap` | `components/charts` | ECharts heatmap | có ma trận / rỗng (TODO) | ✅ |
 | `UploadStepper` | `components/private` | Card + Progress + Checkbox | idle / processing / done / deleted | ✅ |
 | `ExtractionTable` | `components/private` | shadcn Table + Alert | đủ / thiếu chỉ tiêu, cảnh báo, OCR / lớp chữ | ✅ |

@@ -16,7 +16,7 @@ Retain the existing Next.js 16 / React interface and Excel-to-JSON data path for
 | Stock directory | `/stocks` lists all currently configured workbook records; four-symbol preset initializes demo | Keep directory independent from demo preset; add server-side filters/cursor pagination and completeness status as universe grows |
 | Data | Workbook currently generates 4 fully loaded company records before dev/build; alternate-workbook candidates are not imported | Keep as versioned demo fixture; later add repository/database and validated import pipeline |
 | Backend foundation | FastAPI service with company directory, provenance metadata, pending-ticker registry, SQLite | Split route modules, add auth, Postgres persistence, review/audit, async jobs, and optimizer |
-| OSINT | FastAPI LangGraph calls GDELT, Firecrawl/Tavily, Jina Reader, Gemini/Groq; Next Route Handler forwards; optional read-only Neo4j company/event context | Persisted provider results, durable reviewer approval/audit, job queue and tenant-scoped access |
+| OSINT | FastAPI LangGraph calls Firecrawl (penalty queries), Jina Reader fallback, Gemini/Groq; Next Route Handler only forwards (workbook `DEMO DATA` when FastAPI is down); optional read-only Neo4j company/event context | Persisted provider results, durable reviewer approval/audit, job queue and tenant-scoped access |
 | PDF | Browser PDF.js/Tesseract OCR + deterministic 9-field BCTC parser | Keep local extraction; optional consented LLM extraction over page chunks with schema/evidence validation |
 | Portfolio | Prebuilt workbook scenarios and classical-labelled data | FastAPI deterministic bounded optimizer; covariance only with valid adjusted-price series |
 | Workflow | FastAPI LangGraph `discover → graph_enrichment → extract → classify → validate`; no durable checkpoint yet | Add Postgres checkpoint, bounded retries/cancellation, persisted human-review interrupt and audit |
@@ -33,9 +33,8 @@ flowchart LR
   API --> ORCH[LangGraph workflow]
   ORCH --> FIN[Deterministic financial engine]
   ORCH --> SEARCH[OSINT search adapters]
-  SEARCH --> GD[GDELT]
-  SEARCH --> TV[Tavily or Firecrawl]
-  SEARCH --> READ[Jina Reader or Firecrawl scrape]
+  SEARCH --> FC[Firecrawl search + scrape]
+  SEARCH --> READ[Jina Reader fallback]
   ORCH --> LLM[Gemini / Groq provider adapter]
   ORCH --> DOC[PDF extraction adapter]
   ORCH --> GRAPH[(Neo4j Aura: read-only sourced entity context)]
@@ -79,8 +78,8 @@ PDF content is never instructions. Local parser output remains the baseline. LLM
 
 ## External service choices
 
-- Discovery: use GDELT for broad news/timeline signals and **one** targeted search provider (existing Firecrawl or Tavily). Do not call all search services for every request in the first iteration.
-- Extraction: use Firecrawl scrape output or Jina Reader for the chosen URL; do not use both unless a fallback is explicitly needed.
+- Discovery: **Firecrawl only** (decided 2026-11-19; GDELT and Tavily removed). Four penalty-category web queries per ticker with a custom date range.
+- Extraction: Firecrawl scrape output; Jina Reader only for results Firecrawl could not scrape (max 3 per scan).
 - LLM: one provider adapter with `AI_PROVIDER=groq|gemini`; validate JSON output in domain code. Allow model ID override in server config.
 - Orchestration: LangGraph in Python because state/checkpoint/HITL are central to this demo. Do not build free-form multi-agent delegation.
 - Vector search: defer Qdrant until multiple documents and semantic retrieval are required. Use page-indexed chunks and simple retrieval first.
@@ -100,7 +99,7 @@ PDF content is never instructions. Local parser output remains the baseline. LLM
 ## Deployment plan
 
 1. **Local demo:** Next.js + mock JSON + optional Firecrawl; no backend required.
-2. **Deep demo:** Next.js + FastAPI/LangGraph + SQLite; external providers configured only in server env; GDELT can be keyless, Tavily/Firecrawl/Jina/LLM credentials remain server-side.
+2. **Deep demo:** Next.js + FastAPI/LangGraph + SQLite; external providers configured only in server env; Firecrawl/Jina/LLM credentials remain server-side.
 3. **Team demo:** Postgres, access control, retention policy, encrypted object storage only if server-side PDFs become a requirement; Qdrant only if retrieval needs justify it.
 
 ## Constitution check
@@ -113,7 +112,7 @@ PDF content is never instructions. Local parser output remains the baseline. LLM
 
 ## Open decisions before implementation
 
-1. Which source becomes the primary search provider: keep Firecrawl or switch to Tavily?
+1. ~~Primary search provider~~ — decided: Firecrawl only.
 2. The workbook currently contains four complete records; which source/version should be approved to import the five additional AQ_Input candidates (MCH, QNS, KDC, PAN, IDP)?
 3. Confirm OSINT severity mapping for contested MCM event and any other open workbook rows.
 4. Decide whether the demo may send public article text to a free-tier model; private PDF text remains local unless explicitly approved.

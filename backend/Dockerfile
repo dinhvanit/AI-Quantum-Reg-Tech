@@ -9,11 +9,14 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt \
     && useradd --create-home --uid 10001 appuser
 
-# Build context is the repository root. Generate src/data/*.json before docker build.
+# Build context is the repository root (see /.dockerignore). Run `npm run data` (→ data/generated/*.json) before docker build:
+#   docker build -f backend/Dockerfile -t quantumregtech-api .
+#   docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
+# Secrets come from the host's env/secret manager at runtime (variables: backend/.env.example) – never COPY a .env file.
 COPY backend/app /app/backend/app
-COPY src/data /app/src/data
+COPY data/generated /app/data/generated
 RUN mkdir -p /app/backend \
-    && chown -R appuser:appuser /app/backend /app/src
+    && chown -R appuser:appuser /app/backend /app/data
 
 USER appuser
 EXPOSE 8000

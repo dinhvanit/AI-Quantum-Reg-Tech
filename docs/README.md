@@ -14,6 +14,7 @@
 - [Agent Platform architecture and deployment plan](../specs/002-agent-platform/plan.md)
 - [Agent Platform backlog](../specs/002-agent-platform/tasks.md)
 - [Neo4j Aura and MCP setup](NEO4J_MCP.md)
+- [Deploy tách frontend (Vercel) và backend (FastAPI)](DEPLOY.md)
 - [Domain data model](../specs/001-investor-due-diligence-demo/data-model.md)
 - [Draft API contract](../specs/001-investor-due-diligence-demo/contracts/openapi.yaml)
 
@@ -27,7 +28,7 @@
 - [Current tech stack inventory](TECH_STACK.md)
 - [Demo status and known limitations](DEMO_STATUS.md)
 - [Lộ trình triển khai theo phase](IMPLEMENTATION_ROADMAP.md)
-- [Original build packet](QuantumRegTech_Coding_Agent_Packet.md)
+- [Original build packet (lưu trữ – không còn là nguồn sự thật)](archive/QuantumRegTech_Coding_Agent_Packet.md)
 
 ## Source-of-truth order
 

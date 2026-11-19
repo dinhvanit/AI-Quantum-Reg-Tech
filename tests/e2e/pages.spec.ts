@@ -16,7 +16,8 @@ test("Dashboard hiển thị số liệu từ api", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("15,96%")).toBeVisible();
   await expect(page.getByText("+4,11 điểm % so với Baseline")).toBeVisible();
-  await expect(page.locator(".recharts-pie-sector")).toHaveCount(4);
+  await expect(page.getByLabel("Biểu đồ tròn tỷ trọng danh mục").locator("canvas")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Tỷ trọng danh mục" }).locator("tbody tr")).toHaveCount(4);
 });
 
 test("Cổng 1 – MCM có bằng chứng tẩy xanh và sự kiện OSINT", async ({ page }) => {
@@ -64,9 +65,9 @@ test.describe("Cổng 2 – Nạp dữ liệu bảo mật", () => {
   async function upload(page: import("@playwright/test").Page, file: string | typeof XLSX) {
     await page.goto("/private");
     await page.getByLabel("Chọn tệp hồ sơ").setInputFiles(file);
-    const start = page.getByRole("button", { name: "Bắt đầu phân tích" });
+    const start = page.getByRole("button", { name: /^Phân tích \d* ?hồ sơ/ });
     await expect(start).toBeDisabled();
-    await page.getByRole("checkbox").click();
+    await page.getByRole("checkbox", { name: /Tôi cam kết có quyền cung cấp/ }).click(); // không bật AI Agent
     await expect(start).toBeEnabled();
     await start.click();
   }
@@ -88,9 +89,9 @@ test.describe("Cổng 2 – Nạp dữ liệu bảo mật", () => {
     await expect(page.getByText("Grey").first()).toBeVisible(); // Z' ≈ 2,52 → vùng Grey
     await expect(page.getByText("Cần kiểm tra lại")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Xác nhận xoá dữ liệu gốc" }).click();
-    await expect(page.getByText(/Zero-Retention: tệp gốc đã được xoá lúc \d{2}:\d{2}:\d{2}/)).toBeVisible();
-    await expect(page.getByText("bctc-mau-qrt-2024.pdf")).toBeVisible();
+    await page.getByRole("button", { name: "Kết thúc xử lý file trong phiên" }).click();
+    await expect(page.getByText(/Tệp gốc đã được gỡ khỏi phiên lúc \d{2}:\d{2}:\d{2}/)).toBeVisible();
+    await expect(page.getByRole("status").getByText(/bctc-mau-qrt-2024\.pdf/)).toBeVisible();
     await page.getByRole("button", { name: "Phân tích hồ sơ khác" }).click();
     await expect(page.getByText("Kéo thả hồ sơ vào đây")).toBeVisible();
   });

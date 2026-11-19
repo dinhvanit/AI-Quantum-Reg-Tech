@@ -1,0 +1,21 @@
+# Build context for backend/Dockerfile is the repo root; the image only needs backend/ and data/generated/.
+# Keep secrets and heavy folders out of the context sent to the Docker daemon.
+**/.env
+**/.env.*
+!**/.env.example
+.git
+node_modules
+.next
+public/vendor
+test-results
+playwright-report
+tests
+src
+docs
+specs
+backend/.venv
+backend/.pytest_cache
+backend/tests
+backend/universe.sqlite3
+**/__pycache__
+data/QuantumRegTech_Data.xlsx

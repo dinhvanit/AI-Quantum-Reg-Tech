@@ -60,9 +60,9 @@ Số liệu còn thiếu (hiển thị "—") và các điểm cần nhóm tài 
 
 ## Dữ liệu
 
-Nguồn dữ liệu duy nhất: **`data/QuantumRegTech_Data.xlsx`**. Sửa số liệu trong file này → lưu → `npm run data && npm test`. Các file `src/data/*.json` được sinh tự động (trước `dev` / `build` / `test`) và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md).
+Nguồn dữ liệu duy nhất: **`data/QuantumRegTech_Data.xlsx`**. Sửa số liệu trong file này → lưu → `npm run data && npm test`. Các file `data/generated/*.json` (dùng chung cho Next.js và FastAPI) được sinh tự động (trước `dev` / `build` / `test`) và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md).
 
-**Thử Cổng 2:** mở `/private`, tải `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (bản scan → OCR) hoặc `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ). Đây là BCTC của doanh nghiệp **giả định**; đáp án ở `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Bộ demo đầy đủ hơn (3 DN Safe / Grey / Distress × PDF chữ, scan sạch, scan xấu) ở [`demo/pdf/`](demo/pdf/README.md) – tạo lại bằng `node scripts/make-sample-pdf.mjs --demo`.
+**Thử Cổng 2:** mở `/private`, tải `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (bản scan → OCR) hoặc `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ). Đây là BCTC của doanh nghiệp **giả định**; đáp án ở `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
 ## Chạy dự án
 
@@ -74,41 +74,55 @@ npm run data
 npm run dev        # http://localhost:3000; dùng UI-only mode nếu chưa bật FastAPI
 npm run build      # kiểm tra build trước khi deploy
 npm run lint
-npm run data       # Excel → src/data/*.json (tự chạy trước dev/build/test)
+npm run data       # Excel → data/generated/*.json (tự chạy trước dev/build/test)
 npm run assets     # tài nguyên OCR → public/vendor (tự chạy trước dev/build)
 npm test           # unit test (Vitest)
 npx playwright install chromium   # một lần, trước khi chạy e2e
 npm run test:e2e   # e2e (Playwright) – tự build và chạy server
 ```
 
-Để bật deep-demo gồm API dữ liệu và OSINT LangGraph/LangChain, chạy FastAPI ở terminal khác bằng hướng dẫn trong [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md). Biến môi trường (mẫu tại `.env.example`):
+Để bật deep-demo gồm API dữ liệu và OSINT LangGraph/LangChain, chạy FastAPI ở terminal khác bằng hướng dẫn trong [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md). Frontend và backend deploy riêng nên có **hai file mẫu**:
+
+- `.env.example` → `.env.local` ở gốc repo: chỉ biến của Next.js.
+- `backend/.env.example` → `backend/.env`: key dịch vụ và cấu hình FastAPI.
+
+**Frontend** (`.env.local` / Vercel):
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `NEXT_PUBLIC_USE_MOCK` | `false` trong `.env.example` | `true` → dữ liệu fixture trực tiếp; `false` → đọc qua FastAPI |
-| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Địa chỉ FastAPI |
-| `OSINT_SEARCH_PROVIDER` | `auto` | `auto`, `firecrawl` hoặc `tavily`; GDELT vẫn chạy cho một mã/lượt |
-| `FIRECRAWL_API_KEY` | *(không có)* | Bật tìm kiếm OSINT mục tiêu qua Firecrawl |
-| `TAVILY_API_KEY` | *(không có)* | Chọn Tavily làm targeted search bằng `OSINT_SEARCH_PROVIDER=tavily` |
-| `AI_PROVIDER` + provider key | *(không có)* | Chọn `groq` hoặc `gemini` để tạo đề xuất phân loại OSINT; key giữ ở server |
-| `JINA_API_KEY` | *(không bắt buộc)* | Tăng hạn mức khi Jina Reader trích một số bài chưa có excerpt |
+| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | URL công khai của FastAPI (trang server render) |
+| `QUANTUM_API_URL` | = `NEXT_PUBLIC_API_URL` | URL backend cho các route proxy `/api/*`; chỉ cần khi khác URL công khai |
+| `UNIVERSE_ID` | `demo-v1` | Universe gửi kèm khi đăng ký mã mới |
+
+**Backend** (`backend/.env` / secret manager của host FastAPI):
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `CORS_ORIGINS` | `http://localhost:3000,…` | Origin frontend được phép gọi; production thêm domain Vercel |
+| `FIRECRAWL_API_KEY` | *(không có)* | **Nguồn tìm kiếm OSINT duy nhất**: 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính) cho mỗi mã. Thiếu key → hiển thị sự kiện workbook (`DEMO DATA`) |
+| `OSINT_FIRECRAWL_LIMIT` | `5` | Số kết quả mỗi truy vấn (1–10). Credit/mã ≈ 4 × (2 + giá trị này) |
+| `OSINT_LOOKBACK_YEARS` | `3` | Khoảng thời gian tìm kiếm (năm) |
+| `OSINT_JINA_FALLBACK` / `JINA_API_KEY` | `true` / *(không bắt buộc)* | Jina Reader đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được; key chỉ tăng hạn mức |
+| `AI_PROVIDER` (+ `OSINT_AI_PROVIDER`) + provider key | *(không có)* | Chọn `groq` hoặc `gemini` để tạo đề xuất phân loại; `OSINT_AI_PROVIDER` ghi đè riêng cho OSINT; key giữ ở server |
 | `NEO4J_CREDENTIALS_FILE` hoặc `NEO4J_URI` + `NEO4J_USERNAME` + `NEO4J_PASSWORD` | *(không có)* | Kết nối read-only graph context cho agent OSINT |
 
-CAPM, price-period return, Altman Z/X1–X5 và RFin base được tính lại từ đầu vào workbook, có đối chiếu công thức Excel. OSINT chạy qua LangGraph, dùng GDELT/Firecrawl hoặc Tavily, Jina Reader tùy chọn và Gemini/Groq qua LangChain để đề xuất phân loại có bằng chứng; mọi finding vẫn cần reviewer, chưa có audit bền vững hay cập nhật POSINT chính thức. Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Portfolio slider vẫn chọn kịch bản dựng sẵn, chưa chạy optimizer covariance hoặc QAOA.
+CAPM, price-period return, Altman Z/X1–X5 và RFin base được tính lại từ đầu vào workbook, có đối chiếu công thức Excel. OSINT chạy qua LangGraph (FastAPI), dùng Firecrawl tìm sự kiện xử phạt, Jina Reader làm dự phòng đọc nội dung và Gemini/Groq qua LangChain để đề xuất phân loại có bằng chứng; mọi finding vẫn cần reviewer, chưa có audit bền vững hay cập nhật POSINT chính thức. Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Portfolio slider vẫn chọn kịch bản dựng sẵn, chưa chạy optimizer covariance hoặc QAOA.
 
-Sao chép cấu hình mẫu từ `.env.example` sang `.env.local` nếu cần. Không thay toàn bộ `.env.local` hiện có nếu trong đó đã có key; chỉ thêm các dòng còn thiếu và khởi động lại Next.js sau khi sửa.
+Sao chép `.env.example` → `.env.local` và `backend/.env.example` → `backend/.env`. Không thay toàn bộ file hiện có nếu trong đó đã có key; chỉ thêm các dòng còn thiếu và khởi động lại Next.js/FastAPI sau khi sửa. Máy đang để mọi key trong `.env.local` ở root vẫn chạy (FastAPI đọc file này làm fallback), nhưng nên chuyển key dịch vụ sang `backend/.env`.
 
 ### Cấu hình môi trường và deploy
 
-Khi phát triển local, đặt `.env.local` ở **thư mục gốc repo**, cùng cấp `package.json`; không đặt trong `src/`. FastAPI hiện cũng đọc file gốc này. `.env.local` đã được ignore. Dùng `.env.example` làm danh sách biến; không commit giá trị thật. Khi deploy, không upload file `.env.local`: cấu hình từng service trong secret manager của host.
+Local: `.env.local` ở **gốc repo** (cùng cấp `package.json`, không đặt trong `src/`) cho Next.js; `backend/.env` cho FastAPI. Cả hai đã được ignore; không commit giá trị thật. Khi deploy, không upload file env: cấu hình từng service trong secret manager của host.
 
-Khuyến nghị tách deploy: Next.js lên Vercel; FastAPI/worker lên một container host; Neo4j Aura giữ riêng làm database. Vercel nhận URL FastAPI (`NEXT_PUBLIC_API_URL` cho các trang server/client hiện có và `QUANTUM_API_URL` cho route server); FastAPI nhận model/search/Neo4j credentials. Aura API client credentials không cần cho driver hay hosted Aura MCP.
+Deploy tách: Next.js lên Vercel; FastAPI lên một container host; Neo4j Aura giữ riêng làm database. Vercel chỉ nhận URL backend và cờ mock; FastAPI nhận model/search/Neo4j credentials và `CORS_ORIGINS` chứa domain Vercel. Checklist đầy đủ (thứ tự deploy, biến từng nơi, kiểm tra sau deploy): [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
-Build image FastAPI từ repo root sau khi sinh dữ liệu demo:
+Build và chạy thử image FastAPI từ repo root sau khi sinh dữ liệu demo:
 
 ```bash
 npm run data
 docker build -f backend/Dockerfile -t quantumregtech-api .
+docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
 ```
 
 Chiến lược deploy và rollout nhiều môi trường nằm trong [Agent Platform plan](specs/002-agent-platform/plan.md). Tách host giúp deploy/scale API độc lập và giữ bí mật DB phía backend; local vẫn chạy cùng repo bằng hai terminal.

@@ -6,3 +6,4 @@ langgraph>=1.0,<2
 langchain-groq>=0.3,<2
 langchain-google-genai>=2,<5
 neo4j>=5.28,<7
+python-dotenv>=1,<2

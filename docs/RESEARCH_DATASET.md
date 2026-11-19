@@ -35,7 +35,7 @@ Prototype: `data/research/raw/` và `data/research/normalized/` dạng Parquet/J
 Backend đã có client read-only SSI FastConnect V3 (`backend/app/services/market_data/ssi.py`) và CLI ghi raw JSONL (`backend/app/ingestion/ssi_history.py`). Nó yêu cầu `SSI_API_KEY`/`SSI_API_SECRET`, gọi token + paginated `/api/v3/data/ohlc`, giữ giá trị nguồn và nhãn raw/unadjusted. Chưa được gọi bằng tài khoản của bạn hoặc dùng để backtest cho tới khi quyền API, đơn vị và corporate actions được xác nhận.
 
 ```bash
-# Đưa credentials SSI Market Data vào .env.local ở máy bạn; không gửi key qua chat/Git.
+# Đưa credentials SSI Market Data vào backend/.env ở máy bạn; không gửi key qua chat/Git.
 PYTHONPATH=backend backend/.venv/bin/python -m app.ingestion.ssi_history \
   --symbols VNM SAB MCM SBT --from-date 2021-01-01 --to-date 2026-11-19
 ```
@@ -121,7 +121,7 @@ Constraints: `Σw=1`, long-only theo chính sách, max/min position, turnover/li
 
 `data/QuantumRegTech_Data.xlsx` hiện có 4 mã (VNM/SAB/MCM/SBT). README của workbook ghi rõ nó là **nguồn đầu vào thủ công**, không phải crawler. Financials có BCTC hợp nhất 2024 từ file AQ_Input v3 (file gốc không nằm trong repo); Market chỉ có beta và hai mức giá đầu/cuối không có timestamp; ESG score, weights, OSINT events và summary là dữ liệu được nhập từ Phụ lục B/AQ_Input. Excel giữ một số formula như CAPM, Z, weighted summary.
 
-`npm run data` đọc workbook rồi `scripts/build-data.mjs` tái tính CAPM, one-period price return, listed Altman Z/X1–X5/RFin base và weighted summary, đối chiếu với cached workbook formula, rồi sinh `src/data/*.json`. Nó tự chạy trước `dev/build/test`. Đây là **automation từ workbook → validation/formula → JSON/UI**, chưa tự động từ internet → source filing → cleaned financial dataset.
+`npm run data` đọc workbook rồi `scripts/build-data.mjs` tái tính CAPM, one-period price return, listed Altman Z/X1–X5/RFin base và weighted summary, đối chiếu với cached workbook formula, rồi sinh `data/generated/*.json`. Nó tự chạy trước `dev/build/test`. Đây là **automation từ workbook → validation/formula → JSON/UI**, chưa tự động từ internet → source filing → cleaned financial dataset.
 
 ## 8. Tự động hóa ingestion mục tiêu
 

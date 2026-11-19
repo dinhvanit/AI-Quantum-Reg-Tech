@@ -6,8 +6,9 @@ Runbook này giúp người trình bày chạy đúng luồng và tránh mô t�
 
 ### Chuẩn bị môi trường
 
+Chạy từ thư mục gốc repo (cùng cấp `package.json`):
+
 ```bash
-cd /home/dinhvan/orca/workspaces/AI-Quantum-Reg-Tech/quick-build
 npm run data
 backend/.venv/bin/uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload --reload-dir backend/app
 ```
@@ -16,44 +17,44 @@ Lệnh trên chạy FastAPI ở cổng 8000. Nếu chưa cài dependency, tạo 
 
 Ở terminal thứ hai chạy `npm run dev`, rồi mở `http://localhost:3000`. Lệnh `predev` tự sinh JSON và chép tài nguyên OCR. Dùng Node.js 22 theo hướng dẫn repo.
 
-`/api/universe` phải trả 200. Nếu trả 503, kiểm tra `http://127.0.0.1:8000/health`, `QUANTUM_API_URL` hoặc `NEXT_PUBLIC_API_URL`, sau đó khởi động lại Next.js nếu vừa sửa `.env.local`. Kiểm tra Neo4j tại `http://127.0.0.1:8000/api/v1/graph/status`; `ready_empty` nghĩa là DB kết nối được nhưng chưa có node.
+`/api/universe` phải trả 200. Nếu trả 503, kiểm tra `http://127.0.0.1:8000/health`, `QUANTUM_API_URL` hoặc `NEXT_PUBLIC_API_URL`, sau đó khởi động lại Next.js nếu vừa sửa `.env.local` (hoặc FastAPI nếu vừa sửa `backend/.env`). Kiểm tra Neo4j tại `http://127.0.0.1:8000/api/v1/graph/status`; `ready_empty` nghĩa là DB kết nối được nhưng chưa có node.
 
 ### Chọn chế độ OSINT
 
-- App thử GDELT cho một mã; chọn Firecrawl (`OSINT_SEARCH_PROVIDER=firecrawl`) hoặc Tavily (`OSINT_SEARCH_PROVIDER=tavily`) làm tìm kiếm mục tiêu.
-- Jina Reader chỉ được gọi cho tối đa một kết quả headline chưa có trích đoạn. Gemini/Groq có thể đề xuất loại/mức sự kiện; đây không phải xác nhận vi phạm.
-- `OSINT_SEARCH_PROVIDER=auto` ưu tiên Firecrawl nếu có key, nếu không sẽ dùng Tavily nếu có key; GDELT vẫn được thử cho tra cứu một mã.
-- Để demo Tavily: thêm `TAVILY_API_KEY` vào `.env.local`, đặt `OSINT_SEARCH_PROVIDER=tavily`, rồi khởi động lại `npm run dev`.
+- Firecrawl là nguồn tìm kiếm duy nhất: mỗi mã chạy 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính), lọc `OSINT_LOOKBACK_YEARS` năm gần nhất, scrape nội dung bài. Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key → app hiện sự kiện workbook với nhãn `DEMO DATA`.
+- Chi phí: khoảng 4 × (2 + `OSINT_FIRECRAWL_LIMIT`) credit cho mỗi mã mỗi lượt quét (mặc định ≈ 28). Kiểm tra số credit còn lại trước buổi demo.
+- Jina Reader chỉ đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được (tắt bằng `OSINT_JINA_FALLBACK=false`). Gemini/Groq có thể đề xuất loại/mức sự kiện; đây không phải xác nhận vi phạm.
+- Nếu FastAPI không chạy, route Next.js không tự tìm kiếm thay mà trả sự kiện workbook kèm cảnh báo "Không kết nối được backend OSINT".
 - Để bật AI: chọn `AI_PROVIDER=groq` hoặc `gemini` và điền key/model tương ứng. Chỉ excerpt bài báo công khai được gửi cho model; PDF riêng tư vẫn xử lý cục bộ.
 
 ## Kiểm chứng AI Agent trong demo
 
-1. Mở `/company/VNM` và bấm **Run OSINT scan**. Một lượt live thành công phải hiện `mode=live`, provider tìm kiếm như Firecrawl/Tavily, LLM `live` cùng tên model, và đủ 5 bước `discover → graph_enrichment → extract → classify → validate`.
+1. Mở `/company/VNM` và bấm **Run OSINT scan**. Một lượt live thành công phải hiện `mode=live`, nguồn `firecrawl` (kèm `jina-reader` nếu có dùng), số truy vấn (4/mã), LLM `live` cùng tên model, và đủ 5 bước `discover → graph_enrichment → extract → classify → validate`.
 2. Đọc dòng chẩn đoán ngay dưới nút: số kết quả, số đề xuất LLM và số quote khớp chính xác với excerpt. Mở nguồn từng kết quả để tự đối chiếu. Số đề xuất lớn hơn 0 chứng minh model đã trả structured output; quote khớp bằng 0 vẫn là kết quả hợp lệ nhưng không có căn cứ để preview penalty.
 3. Neo4j `đã kết nối, chưa có node công ty` chứng minh kết nối sống nhưng graph chưa có dữ liệu; `chưa kết nối` là cấu hình/kết nối cần xử lý. Không cần ghi dữ liệu demo vào graph để chạy luồng OSINT.
 4. Nếu có kết quả workbook, UI ghi rõ `DEMO DATA` và AI bị skip. Nếu tìm kiếm sống không có bài, đây không phải lỗi LLM: không có nguồn để phân loại.
 5. Mở Developer Tools → Network, chọn request `POST /api/osint/scan` để kiểm tra HTTP `200`, workflow, metadata provider/AI và findings. Không chụp/paste request environment hoặc API key vào log demo.
 
-Lượt kiểm chứng gần nhất trên máy dev: HTTP 200, Firecrawl + Jina Reader, Groq `openai/gpt-oss-120b`, 9 kết quả, 9 structured proposals, graph connected nhưng chưa match VNM. Lượt đó có 0 quote khớp chính xác, nên không có penalty AI nào được xác nhận cho preview. Kết quả tìm kiếm và nội dung LLM thay đổi theo thời điểm.
+Luồng Firecrawl-only mới chỉ được kiểm bằng test backend với provider giả lập (`backend/tests/test_osint_graph.py`); chưa có lượt kiểm chứng với key thật. Kết quả tìm kiếm và nội dung LLM thay đổi theo thời điểm.
 
 ### Demo AI đọc PDF
 
-1. Vào `/private`, dùng tài liệu giả định `demo/pdf/02-mau-qrt-grey.pdf`.
+1. Vào `/private`, dùng tài liệu giả định `tests/fixtures/bctc-mau-qrt-2024.pdf`.
 2. Chọn đồng ý xử lý cục bộ. Tick thêm checkbox AI Agent để cho phép gửi text OCR/trích xuất (không gửi PDF gốc) tới Groq/Gemini.
 3. Trong Processing theo dõi `Đọc tài liệu/OCR → Chuẩn hoá → LLM Agent → Z'-Score`. Kết quả phải ghi provider/model, workflow `llm_extract → validate_evidence`, số proposal và số quote đã khớp.
 4. Bảng đánh dấu phương pháp theo từng field (`LLM`/`Rules`), trang và quote. Nếu model không trả evidence khớp, field giữ giá trị của parser hoặc để trống; không lấy proposal chưa kiểm chứng để tính Z'. Nếu hai phương pháp lệch nhau, so sánh dòng gốc trước khi trình bày.
-5. PDF scan `02-mau-qrt-grey-scan.pdf` minh hoạ OCR. Không gửi tài liệu thật/mật tới provider nếu chưa được phép.
+5. PDF scan `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` minh hoạ OCR. Không gửi tài liệu thật/mật tới provider nếu chưa được phép.
 - Khi không có kết quả live, app dùng sự kiện workbook và gắn nhãn `DEMO DATA`.
 - Hồ sơ OSINT hiển thị các bước agent và trạng thái Neo4j. Hiện Aura đã kết nối nhưng graph rỗng; muốn nạp dữ liệu workbook demo thì chạy lệnh seed có cờ ghi chủ động trong [backend README](../backend/README.md).
 - Cấu hình MCP cho IDE nằm trong `.vscode/mcp.json`. Bật Tool authentication trong Aura Console, mở VS Code và hoàn tất OAuth trong browser. Chỉ đọc graph khi demo.
-- Mẫu đầy đủ nằm trong `.env.example`. Chỉ thêm các dòng còn thiếu vào `.env.local`, không ghi đè các key hiện có; sửa `.env.local` xong thì khởi động lại `npm run dev`.
+- Mẫu: `.env.example` (frontend → `.env.local`) và `backend/.env.example` (FastAPI → `backend/.env`). Chỉ thêm các dòng còn thiếu, không ghi đè key hiện có; sửa xong thì khởi động lại `npm run dev` hoặc uvicorn tương ứng.
 - Nếu provider lỗi, giao diện giữ kết quả từ provider khác hoặc báo rõ fallback; không nói rằng app vừa xác minh vi phạm.
 
 ### Tệp PDF demo
 
-- `demo/pdf/02-mau-qrt-grey.pdf`: PDF chữ, công ty giả định, dùng để thấy trích xuất và vùng Grey.
-- `demo/pdf/02-mau-qrt-grey-scan.pdf`: PDF scan, dùng để minh họa OCR.
-- Các file `01-an-phat-*` và `03-binh-minh-*` cũng là doanh nghiệp giả định; xem đáp án/ghi chú tại `demo/pdf/README.md`.
+- `tests/fixtures/bctc-mau-qrt-2024.pdf`: PDF chữ, công ty giả định, dùng để thấy trích xuất và vùng Grey.
+- `tests/fixtures/bctc-mau-qrt-2024-scan.pdf`: PDF scan, dùng để minh họa OCR.
+- Đáp án: `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Đây cũng là fixture của e2e test – không sửa tay; tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
 Đóng các tab/file cá nhân trước khi trình chiếu. Không dùng hồ sơ thẩm định thật nếu chưa được phép gửi/hiển thị trong buổi demo.
 
@@ -75,7 +76,7 @@ Mở `/stocks`, nêu universe hiện tại có bốn hồ sơ đầy đủ. Bấ
 
 1. Ở hồ sơ doanh nghiệp bấm `Run OSINT scan`.
 2. Chế độ demo: nêu rõ sự kiện xuất phát từ workbook và có thể đã nằm trong assessment; hệ thống không cộng penalty lần hai.
-3. Chế độ live: xem nguồn GDELT/Firecrawl, mở URL, đọc trích đoạn và đề xuất AI; bài viết chưa chứng minh vi phạm, cần reviewer.
+3. Chế độ live: xem nguồn Firecrawl và nhóm truy vấn của từng kết quả, mở URL, đọc trích đoạn và đề xuất AI; bài viết chưa chứng minh vi phạm, cần reviewer.
 4. AI chỉ phân loại excerpt và không ghi POSINT. Chưa có persistence/audit trail.
 
 ### 2:50–4:00 — Portfolio
@@ -86,9 +87,9 @@ Mở `/stocks`, nêu universe hiện tại có bốn hồ sơ đầy đủ. Bấ
 
 ### 4:00–5:20 — PDF nội bộ
 
-1. Mở `/private` và dùng `demo/pdf/02-mau-qrt-grey.pdf`.
+1. Mở `/private` và dùng `tests/fixtures/bctc-mau-qrt-2024.pdf`.
 2. Kiểm tra extracted rows, trang/dòng, X1–X5 và Z′ nếu đủ inputs.
-3. Nếu còn thời gian, dùng `02-mau-qrt-grey-scan.pdf` để cho thấy OCR.
+3. Nếu còn thời gian, dùng `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` để cho thấy OCR.
 4. Nêu rõ đây là BCTC giả định; OCR/parser chạy trong trình duyệt, LLM extraction chỉ bật khi có opt-in; kết quả chưa ghi vào hồ sơ cổ phiếu public và chưa có RAG.
 
 ### 5:20–6:00 — Báo cáo
@@ -116,11 +117,11 @@ Thiết kế universe không giới hạn ở bốn mã. Để một mã có ph�
 
 | Hiện tượng | Cách xử lý demo |
 |---|---|
-| `/api/universe` trả 503 | Khởi động FastAPI ở cổng 8000 trong cùng workspace, kiểm tra `/health` và URL backend trong `.env.local` |
+| `/api/universe` trả 503 | Khởi động FastAPI ở cổng 8000 trong cùng workspace, kiểm tra `/health` và URL backend trong `.env.local` (Vercel: biến môi trường của project) |
 | Search provider timeout/quota | Nêu rõ nguồn nào lỗi; nếu không còn kết quả live thì app dùng workbook fallback có nhãn `DEMO DATA` |
 | Document Agent `RateLimitError` | Chờ quota provider hồi phục hoặc đổi `AI_PROVIDER` sang provider khác đã cấu hình; kết quả Rules vẫn hiển thị. Không gửi lại liên tục vì sẽ tăng rate limit |
 | Document Agent báo 413 | Bản hiện tại giới hạn và lọc context trước khi gửi. Nếu provider vẫn từ chối request, dùng PDF ngắn hơn hoặc giảm số trang; parser Rules vẫn là fallback |
 | OCR chưa tải worker | Chờ trang nạp tài nguyên hoặc tải lại; dùng PDF chữ làm đường dự phòng |
-| Kết quả PDF thiếu một số ô | Dùng PDF chữ `02-mau-qrt-grey.pdf`; chỉ rõ parser giữ thiếu thay vì đoán |
+| Kết quả PDF thiếu một số ô | Dùng PDF chữ `tests/fixtures/bctc-mau-qrt-2024.pdf`; chỉ rõ parser giữ thiếu thay vì đoán |
 | Portfolio báo scenario/constraint chưa hỗ trợ | Quay lại preset demo 4 mã; đây là giới hạn dữ liệu/scenario hiện có |
 | Sửa workbook mà app vẫn giữ dữ liệu cũ | Dừng server, chạy `npm run data`, sau đó khởi động lại `npm run dev` |

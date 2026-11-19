@@ -55,7 +55,7 @@ Kết quả không làm nghiên cứu “vô giá trị”. Nó gợi ý một g
 
 ## 6. Nạp PDF thẩm định nội bộ
 
-1. Mở `/private`, chọn một PDF mẫu trong `demo/pdf/`.
+1. Mở `/private`, chọn PDF mẫu `tests/fixtures/bctc-mau-qrt-2024.pdf` (bản scan: `-scan.pdf`) hoặc BCTC bạn được phép sử dụng.
 2. PDF không cần đúng pixel/layout của một template. OCR/đọc lớp chữ chạy trên trình duyệt; parser quy tắc nhận diện mã phổ biến để làm baseline.
 3. Muốn demo AI Agent, bật checkbox đồng ý gửi **text OCR/trích xuất** tới LLM provider. PDF gốc không gửi. LangGraph chạy `llm_extract → validate_evidence`; mỗi giá trị AI chỉ được dùng khi quote khớp văn bản và trang nguồn tồn tại. Bảng kết quả chỉ rõ `LLM` hay `Rules`, và cảnh báo nếu khác parser.
 4. Chỉ dùng file giả định hoặc file bạn được phép chia sẻ với nhà cung cấp LLM. Kết quả chỉ là trích xuất cần review; chưa tự nhập vào hồ sơ niêm yết và chưa lưu bền vững.

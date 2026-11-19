@@ -6,13 +6,14 @@
 ## 1. Luồng dữ liệu
 
 ```
-data/QuantumRegTech_Data.xlsx ──(npm run data · scripts/build-data.mjs)──► src/data/*.json ──► src/lib/api.ts ──► UI
+data/QuantumRegTech_Data.xlsx ──(npm run data · scripts/build-data.mjs)──► data/generated/*.json ──┬─► src/lib/api.ts ──► UI (Next.js)
+                                                                                         └─► backend/ (FastAPI, GENERATED_DATA_DIR)
         ▲ nhóm tài chính sửa                    tự chạy trước dev / build / test          (không commit)
 ```
 
-- **Chỉ sửa file Excel**, không sửa `src/data/*.json` (bị ghi đè và nằm trong `.gitignore`).
+- **Chỉ sửa file Excel**, không sửa `data/generated/*.json` (bị ghi đè và nằm trong `.gitignore`).
 - `npm run data` tự chạy qua `predev`, `prebuild`, `pretest` → Vercel build cũng tự sinh JSON.
-- Component **không bao giờ** `import` trực tiếp từ `src/data/` – luôn qua `src/lib/api.ts`.
+- Component **không bao giờ** `import` trực tiếp từ `data/generated/` (alias `@data/*`) – luôn qua `src/lib/api.ts`. Ngoại lệ: route server `src/app/api/osint/scan` đọc sự kiện workbook để trả `DEMO DATA` khi FastAPI không chạy.
 - Script báo lỗi rõ ràng khi: thiếu sheet, ô cần số lại chứa chữ, công thức chưa có kết quả (file sửa bằng công cụ không tính công thức → mở bằng Excel/LibreOffice rồi lưu lại).
 
 ### Quy trình cập nhật số liệu

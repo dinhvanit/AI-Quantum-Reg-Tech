@@ -1,51 +1,74 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import * as echarts from "echarts/core";
+import { BarChart } from "echarts/charts";
+import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 import { formatPct } from "@/lib/format";
 import type { PortfolioResult } from "@/lib/types";
+import { useCssVars } from "@/lib/use-css-vars";
+import { TOOLTIP_VARS, escapeHtml, tooltipBase } from "./echarts-base";
+
+echarts.use([BarChart, GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, CanvasRenderer]);
+
+const VARS = [...TOOLTIP_VARS, "--chart-5", "--primary", "--foreground", "--muted-foreground", "--muted"] as const;
+const CATEGORIES = ["Lợi nhuận kỳ vọng", "Return lịch sử (1 kỳ)"];
 
 /** So sánh CAPM expectation và một kỳ giá lịch sử; không đại diện rolling/out-of-sample backtest. */
 export function BacktestChart({ portfolio }: { portfolio: Pick<PortfolioResult, "baseline" | "esgAware"> }) {
-  const data = [
-    { name: "Lợi nhuận kỳ vọng", baseline: portfolio.baseline.expectedReturn, esg: portfolio.esgAware.expectedReturn },
-    { name: "Return lịch sử (1 kỳ)", baseline: portfolio.baseline.realizedReturn, esg: portfolio.esgAware.realizedReturn },
+  const c = useCssVars(VARS);
+  if (!c) return <div className="h-60" />;
+
+  const series = [
+    { name: "Baseline · workbook", data: [portfolio.baseline.expectedReturn, portfolio.baseline.realizedReturn], color: c["--chart-5"], label: c["--muted-foreground"] },
+    { name: "ESG-aware · workbook", data: [portfolio.esgAware.expectedReturn, portfolio.esgAware.realizedReturn], color: c["--primary"], label: c["--foreground"] },
   ];
 
+  const option = {
+    grid: { top: 28, right: 8, bottom: 48, left: 48 },
+    legend: { bottom: 0, itemWidth: 10, itemHeight: 10, icon: "rect", textStyle: { fontSize: 11, color: c["--muted-foreground"] } },
+    tooltip: {
+      ...tooltipBase(c),
+      trigger: "axis",
+      axisPointer: { type: "shadow", shadowStyle: { color: c["--muted"], opacity: 0.5 } },
+      formatter: (items: Array<{ axisValue: string; seriesName: string; value: number }>) =>
+        `<b>${escapeHtml(items[0]?.axisValue ?? "")}</b><br/>` +
+        items.map((p) => `${escapeHtml(p.seriesName)}: <b>${formatPct(p.value)}</b>`).join("<br/>"),
+    },
+    xAxis: {
+      type: "category",
+      data: CATEGORIES,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 11, color: c["--muted-foreground"] },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { fontSize: 10, color: c["--muted-foreground"], formatter: (v: number) => formatPct(v, 0) },
+      splitLine: { lineStyle: { color: c["--border"] } },
+    },
+    series: series.map((s, i) => ({
+      type: "bar",
+      name: s.name,
+      data: s.data,
+      barMaxWidth: 48,
+      barGap: "4%",
+      itemStyle: { color: s.color, borderRadius: [4, 4, 0, 0] },
+      label: { show: true, position: "top", fontSize: 10, color: s.label, formatter: (p: { value: number }) => formatPct(p.value) },
+      // Đường 0 để thấy rõ lợi nhuận âm.
+      ...(i === 0 ? { markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: c["--muted-foreground"], type: "solid" }, data: [{ yAxis: 0 }] } } : {}),
+    })),
+  };
+
   return (
-    <div className="w-full overflow-x-auto">
-      <BarChart width={460} height={240} data={data} barGap={2} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-        <YAxis
-          tickFormatter={(v: number) => formatPct(v, 0)}
-          tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-          axisLine={false}
-          tickLine={false}
-          width={44}
-        />
-        <ReferenceLine y={0} stroke="var(--muted-foreground)" />
-        <Tooltip
-          cursor={{ fill: "var(--muted)", opacity: 0.5 }}
-          content={({ active, payload, label }) =>
-            active && payload?.length ? (
-              <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-                <p className="mb-1 font-semibold">{label}</p>
-                {payload.map((p) => (
-                  <p key={String(p.dataKey)} className="flex justify-between gap-4">
-                    <span>{p.name}</span>
-                    <span className="font-mono">{formatPct(p.value as number)}</span>
-                  </p>
-                ))}
-              </div>
-            ) : null
-          }
-        />
-        <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="baseline" name="Baseline · workbook" fill="var(--chart-5)" radius={[4, 4, 0, 0]} maxBarSize={48}
-          label={{ position: "top", fontSize: 10, fill: "var(--muted-foreground)", formatter: (v: unknown) => formatPct(v as number) }} />
-        <Bar dataKey="esg" name="ESG-aware · workbook" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={48}
-          label={{ position: "top", fontSize: 10, fill: "var(--foreground)", formatter: (v: unknown) => formatPct(v as number) }} />
-      </BarChart>
-    </div>
+    <ReactEChartsCore
+      echarts={echarts}
+      option={option}
+      notMerge
+      style={{ height: 240, width: "100%" }}
+      opts={{ renderer: "canvas" }}
+      aria-label={`So sánh lợi nhuận: ${series.map((s) => `${s.name} ${CATEGORIES.map((cat, i) => `${cat} ${formatPct(s.data[i])}`).join(", ")}`).join("; ")}`}
+    />
   );
 }

@@ -28,7 +28,7 @@ flowchart LR
 - `backend/app/domain/`: typed entities and deterministic business rules.
 - `backend/app/repositories/`: persistence interfaces; PostgreSQL implementation replaces demo SQLite when shared deployment begins.
 - `backend/workers/`: queue consumers for long scans, PDF OCR/LLM, and report creation.
-- `data/`: source workbook only. Generated `src/data/*.json` remains a demo fixture, not the eventual system of record.
+- `data/`: source workbook only. Generated `data/generated/*.json` (shared by Next.js and FastAPI) remains a demo fixture, not the eventual system of record.
 
 ## Data and control flow
 
@@ -46,7 +46,7 @@ LangGraph checkpointer stores workflow state in PostgreSQL for deployed use. Nev
 
 ## Configuration and deployment
 
-- Local monorepo: root `.env.local` is outside `src/`, ignored by Git, and loaded by Next.js and FastAPI. Keep private service credentials here for the local demo; use `NEO4J_CREDENTIALS_FILE` to reference the external credentials file without copying the database password.
+- Local monorepo: root `.env.local` (Next.js settings only) and `backend/.env` (FastAPI service credentials) are ignored by Git; templates are `.env.example` and `backend/.env.example`. FastAPI still reads root `.env.local` as a fallback. Use `NEO4J_CREDENTIALS_FILE` to reference the external credentials file without copying the database password.
 - Production: set variables in each hosting provider’s runtime secret manager. Vercel gets only the public web settings and server-side BFF URL; the API host gets LLM/search/Neo4j secrets. Never add deployment secrets to a build artifact or `NEXT_PUBLIC_*` variable.
 - Recommended first deployment: Vercel for Next.js, a container host such as Render/Fly.io/Cloud Run for FastAPI, Neo4j Aura for the graph, managed PostgreSQL for shared state. Deploying separately gives independent scaling and secret boundaries; local development remains one repo and two processes.
 - Add Redis/managed queue only when scans exceed request timeouts or PDF jobs require background processing.
