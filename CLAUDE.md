@@ -10,7 +10,7 @@ Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu d
 | Phần | Đã chạy thật | Chưa có / vẫn mô phỏng |
 |---|---|---|
 | Tài chính | CAPM, Altman X1–X5/Z, RFin tính lại từ workbook (`scripts/build-data.mjs`) | Dữ liệu là lịch sử (BCTC 2024, giá 2025), không phải feed live |
-| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; Firecrawl tìm sự kiện xử phạt (4 truy vấn/mã), Jina Reader dự phòng đọc nội dung, Groq/Gemini đề xuất phân loại có quote khớp. Route Next.js chỉ proxy – không có bản OSINT thứ hai | Duyệt chỉ preview trong phiên; không lưu audit, không cập nhật POSINT chính thức |
+| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; Firecrawl Agent tìm sự kiện xử phạt (mặc định; `OSINT_DISCOVERY=search` → 4 truy vấn/mã), đọc lại trang nguồn để kiểm quote của agent, Jina Reader dự phòng, Groq/Gemini đề xuất phân loại có quote khớp. Chạy dạng job (POST trả `scan_id`, client poll). Route Next.js chỉ proxy – không có bản OSINT thứ hai | Duyệt chỉ preview trong phiên; không lưu audit, không cập nhật POSINT chính thức; job lưu trong RAM (1 worker) |
 | Cổng 2 (PDF) | PDF + OCR + parser quy tắc trong trình duyệt (`src/lib/ocr/`); LLM trích xuất **opt-in** (`backend/app/agents/document_graph.py`) | Không RAG, không lưu field đã duyệt |
 | Danh mục / Lượng tử | Chọn kịch bản dựng sẵn gần nhất từ workbook | Chưa có optimizer covariance, chưa có QAOA/Qiskit |
 | Neo4j | Adapter chỉ đọc đã kết nối | Graph rỗng (seed là lệnh chủ động, có cờ ghi) |

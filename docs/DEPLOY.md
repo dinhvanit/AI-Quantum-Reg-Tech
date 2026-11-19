@@ -28,12 +28,14 @@ docker build -f backend/Dockerfile -t quantumregtech-api .     # context = gốc
 docker run --env-file backend/.env -p 8000:8000 quantumregtech-api   # chạy thử local
 ```
 
-Container lắng nghe `$PORT` (mặc định 8000); đa số host tự cấp biến này.
+Container lắng nghe `$PORT` (mặc định 8000); đa số host tự cấp biến này. Job OSINT lưu trong bộ nhớ tiến trình: chạy **1 instance, 1 worker**; restart/redeploy làm mất job đang chạy (job phía Firecrawl vẫn tính credit).
 
 | Nhóm | Biến | Bắt buộc? | Ghi chú |
 |---|---|---|---|
 | CORS | `CORS_ORIGINS` | **Có** | Domain frontend, ngăn cách bằng dấu phẩy, không có `/` cuối, vd. `https://<app>.vercel.app`. Preview Vercel có domain khác – thêm nếu cần |
-| OSINT | `FIRECRAWL_API_KEY` | Có (cho OSINT live) | Thiếu → trả sự kiện workbook `DEMO DATA`. ≈ 28 credit/mã/lượt quét |
+| OSINT | `FIRECRAWL_API_KEY` | Có (cho OSINT live) | Thiếu → trả sự kiện workbook `DEMO DATA`. Chế độ agent: tới `OSINT_AGENT_MAX_CREDITS` + ≤ 20 trang scrape mỗi mã |
+| OSINT | `OSINT_DISCOVERY` | Không | `agent` (mặc định, Firecrawl Agent) hoặc `search` (4 truy vấn/mã, rẻ hơn) |
+| OSINT | `OSINT_AGENT_MAX_CREDITS`, `OSINT_AGENT_TIMEOUT_SECONDS` | Không | Trần credit mỗi mã (mặc định 500) và thời gian chờ tối đa (300 s) |
 | OSINT | `OSINT_FIRECRAWL_LIMIT`, `OSINT_LOOKBACK_YEARS` | Không | Mặc định 5 và 3 |
 | OSINT | `OSINT_JINA_FALLBACK`, `JINA_API_KEY` | Không | Jina dự phòng; key chỉ tăng hạn mức |
 | AI | `AI_PROVIDER` + `GROQ_API_KEY` **hoặc** `GEMINI_API_KEY` | Có (cho đề xuất AI) | Thiếu → không có đề xuất, kết quả tìm kiếm vẫn hiện |
@@ -58,7 +60,7 @@ Framework preset Next.js, giữ lệnh build mặc định (`prebuild` tự ch�
 
 Không đặt key Firecrawl/Groq/Gemini/Jina/Neo4j/SSI trên Vercel – frontend không dùng tới.
 
-Route OSINT proxy có timeout 90 s; host backend phải cho phép request dài như vậy (một lượt quét 4 mã có thể mất vài chục giây).
+OSINT chạy dạng job: `POST /api/v1/osint/scans` trả `scan_id` ngay (202), trình duyệt hỏi `GET /api/v1/osint/scans/{id}` mỗi 3 giây qua route proxy – không có request nào giữ kết nối nhiều phút, nên không cần tăng timeout function trên Vercel.
 
 ## 4. Kiểm tra sau deploy
 

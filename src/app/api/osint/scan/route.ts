@@ -9,9 +9,10 @@ const API_URL = process.env.QUANTUM_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?
 const MAX_TICKERS = 4;
 
 /**
- * Proxy to the FastAPI LangGraph OSINT workflow (Firecrawl search → Neo4j context → Jina fallback → LLM → quote validation).
+ * Starts a FastAPI OSINT scan job (Firecrawl Agent/search → Neo4j context → source re-read → LLM → quote validation)
+ * and returns `{ scan_id, status: "running" }`; the client polls GET /api/osint/scan/{id}.
  * There is deliberately no second search implementation here: when FastAPI is unreachable the route returns
- * workbook events labelled DEMO DATA. Neither search nor LLM writes official POSINT.
+ * workbook events labelled DEMO DATA (already complete, no polling). Neither search nor LLM writes official POSINT.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as { tickers?: unknown };
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ tickers }),
       cache: "no-store",
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(15_000),
     });
   } catch {
     return workbookFallback(tickers);
