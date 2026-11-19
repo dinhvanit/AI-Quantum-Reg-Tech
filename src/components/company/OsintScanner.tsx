@@ -6,14 +6,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { formatNumber } from "@/lib/format";
 
-type Finding = { ticker: string; title: string; source: string; url: string; sourceProvider?: string; status: "Needs review" | "Verified" | "Rejected" | "Already in assessment"; demo?: boolean; penalty?: number; proposedPenalty?: number | null; excerpt?: string; publishedAt?: string; eventDate?: string; alreadyInAssessment?: boolean; aiProposal?: { related: boolean; eventType: string; severity: number | null; confidence: number; evidenceQuote: string; rationale: string } };
+type Finding = { ticker: string; title: string; source: string; url: string; sourceProvider?: string; searchCategory?: string; readerProvider?: string; status: "Needs review" | "Verified" | "Rejected" | "Already in assessment"; demo?: boolean; penalty?: number; proposedPenalty?: number | null; excerpt?: string; publishedAt?: string; eventDate?: string; alreadyInAssessment?: boolean; aiProposal?: { related: boolean; eventType: string; severity: number | null; confidence: number; evidenceQuote: string; rationale: string } };
 type ScanMeta = {
   workflow?: string[];
   graph?: { available?: boolean; matched_tickers?: string[] };
   ai?: { mode?: string; provider?: string; model?: string; proposal_count?: number; validated_quote_count?: number };
   providers?: string[];
+  search?: { queries?: number; limit_per_query?: number };
+  duration_ms?: number;
   findings_count?: number;
 };
+
+const SEARCH_CATEGORY: Record<string, string> = { tax: "Thuế", environment: "Môi trường", securities: "Chứng khoán", administrative: "Hành chính" };
 
 export function OsintScanner({ ticker, posint, rfinTotal, existingUrls }: { ticker: string; posint: number; rfinTotal: number; existingUrls: string[] }) {
   const [busy, setBusy] = useState(false);
@@ -33,6 +37,8 @@ export function OsintScanner({ ticker, posint, rfinTotal, existingUrls }: { tick
         graph: payload.graph,
         ai: payload.ai,
         providers: payload.providers,
+        search: payload.search,
+        duration_ms: payload.duration_ms,
         findings_count: payload.findings?.length ?? 0,
       });
       const existing = new Set(existingUrls.map(canonicalUrl));
@@ -70,14 +76,14 @@ export function OsintScanner({ ticker, posint, rfinTotal, existingUrls }: { tick
       {message && <p className="rounded-lg bg-muted p-3 text-xs">{message}</p>}
       {scanMeta.workflow?.length ? <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
         <span className="rounded border px-2 py-1">Agent flow: {scanMeta.workflow.join(" → ")}</span>
-        <span className="rounded border px-2 py-1">Nguồn chạy: {scanMeta.providers?.join(" + ") || "không có"} · {scanMeta.findings_count ?? 0} kết quả</span>
+        <span className="rounded border px-2 py-1">Nguồn chạy: {scanMeta.providers?.join(" + ") || "không có"} · {scanMeta.search?.queries ?? 0} truy vấn · {scanMeta.findings_count ?? 0} kết quả{scanMeta.duration_ms != null ? ` · ${formatNumber(scanMeta.duration_ms / 1000, 1)} giây` : ""}</span>
         <span className="rounded border px-2 py-1">LLM: {scanMeta.ai?.mode === "live" ? `${scanMeta.ai.provider}/${scanMeta.ai.model}` : scanMeta.ai?.mode ?? "chưa rõ"} · {scanMeta.ai?.proposal_count ?? 0} đề xuất · {scanMeta.ai?.validated_quote_count ?? 0} quote khớp nguồn</span>
         <span className="rounded border px-2 py-1">Neo4j: {scanMeta.graph?.available ? scanMeta.graph.matched_tickers?.includes(ticker) ? "đã tìm thấy node công ty" : "đã kết nối, chưa có node công ty" : "chưa kết nối"}</span>
       </div> : null}
       {findings.map((finding, index) => <div key={`${finding.url}-${index}`} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{finding.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{finding.source}{finding.sourceProvider ? ` · ${finding.sourceProvider}` : ""}{finding.publishedAt ? ` · ${finding.publishedAt}` : finding.eventDate ? ` · Sự kiện: ${finding.eventDate}` : ""} · {finding.status === "Verified" ? "Reviewer duyệt (preview)" : finding.status}{finding.demo ? " · DEMO DATA" : ""}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{finding.source}{finding.sourceProvider ? ` · ${finding.sourceProvider}` : ""}{finding.searchCategory ? ` · truy vấn ${SEARCH_CATEGORY[finding.searchCategory] ?? finding.searchCategory}` : ""}{finding.readerProvider ? ` · nội dung qua ${finding.readerProvider}` : ""}{finding.publishedAt ? ` · ${finding.publishedAt}` : finding.eventDate ? ` · Sự kiện: ${finding.eventDate}` : ""} · {finding.status === "Verified" ? "Reviewer duyệt (preview)" : finding.status}{finding.demo ? " · DEMO DATA" : ""}</p>
           {finding.excerpt && <p className="mt-2 line-clamp-3 text-xs">{finding.excerpt}</p>}
           {finding.aiProposal && <div className="mt-2 rounded-md bg-muted/60 p-2 text-xs">
             <p className="font-medium">Đề xuất AI · {finding.aiProposal.related ? `liên quan · ${finding.aiProposal.eventType} · mức ${finding.aiProposal.severity ?? "chưa đủ bằng chứng"}` : "có thể không liên quan"} · độ tin cậy AI tự đánh giá {formatNumber(finding.aiProposal.confidence * 100, 0)}%</p>

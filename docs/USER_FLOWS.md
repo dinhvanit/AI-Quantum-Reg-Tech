@@ -48,7 +48,7 @@ Luồng PDF hiện là nhánh thẩm định riêng. Kết quả PDF **chưa đ�
 
 1. Chỉ ra Altman Z/zone, ESGi, các ô đang thiếu, timeline OSINT và công thức `RFin base + POSINT = RFin total`.
 2. Bấm `Run OSINT scan`.
-3. Ứng dụng thử GDELT cho một mã; nếu có `FIRECRAWL_API_KEY` thì truy vấn Firecrawl thêm. Jina Reader có thể trích văn bản cho tối đa một kết quả chỉ có tiêu đề.
+3. Backend gửi 4 truy vấn Firecrawl theo nhóm sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính) trong `OSINT_LOOKBACK_YEARS` năm, scrape nội dung bài và gộp trùng URL. Jina Reader đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được. Kết quả không có nội dung không được gửi cho LLM.
 4. Nếu Gemini/Groq đã cấu hình, AI đề xuất loại/mức sự kiện, độ tin cậy tự đánh giá và câu trích dẫn. Câu trích chỉ được giữ nếu khớp nguyên văn excerpt.
 5. Reviewer mở nguồn và quyết định; nút duyệt chỉ là preview trong phiên. Chưa có audit log bền vững hoặc cập nhật POSINT chính thức. Khi không có kết quả live, ứng dụng dùng workbook kèm nhãn `DEMO DATA`/`Already in assessment`.
 
@@ -104,7 +104,7 @@ Báo cáo hiện là report theo dữ liệu công ty trong workbook. Nó chưa 
 
 Hiện tại `/stocks` cho đăng ký mã mới kèm nguồn tham chiếu vào registry FastAPI/SQLite; mã trả về ở trạng thái `pending_data`, hiển thị trong danh sách chờ nhưng chưa có hồ sơ điểm số và không được đưa vào optimizer. Bước nhập và kiểm tra bộ dữ liệu tài chính vẫn phải được hoàn thành trước khi mã chuyển thành `analysis_ready`. Khi universe lớn, dùng search/filter và cursor pagination; không tải toàn bộ phân tích cho hàng nghìn mã cùng một lượt.
 
-Với hồ sơ đủ dữ liệu, CAPM/return/Altman/RFin base được tái tính bằng financial engine khi sinh JSON. ESGi vẫn là số workbook đã cung cấp. Luồng OSINT live dùng GDELT, Firecrawl tùy cấu hình và Jina Reader có giới hạn; Gemini/Groq có thể đề xuất phân loại từ tiêu đề/trích đoạn. Câu trích dẫn không khớp phần văn bản được lấy về sẽ bị loại; reviewer quyết định trong phiên hiện tại.
+Với hồ sơ đủ dữ liệu, CAPM/return/Altman/RFin base được tái tính bằng financial engine khi sinh JSON. ESGi vẫn là số workbook đã cung cấp. Luồng OSINT live dùng Firecrawl và Jina Reader (dự phòng, có giới hạn); Gemini/Groq có thể đề xuất phân loại từ tiêu đề/trích đoạn. Câu trích dẫn không khớp phần văn bản được lấy về sẽ bị loại; reviewer quyết định trong phiên hiện tại.
 
 ## 6. Tiêu chí duyệt trước khi chốt kịch bản
 

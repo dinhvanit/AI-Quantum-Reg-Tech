@@ -10,7 +10,7 @@ Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu d
 | Phần | Đã chạy thật | Chưa có / vẫn mô phỏng |
 |---|---|---|
 | Tài chính | CAPM, Altman X1–X5/Z, RFin tính lại từ workbook (`scripts/build-data.mjs`) | Dữ liệu là lịch sử (BCTC 2024, giá 2025), không phải feed live |
-| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; GDELT + Firecrawl/Tavily, Jina Reader, Groq/Gemini đề xuất phân loại có quote khớp | Duyệt chỉ preview trong phiên; không lưu audit, không cập nhật POSINT chính thức |
+| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; Firecrawl tìm sự kiện xử phạt (4 truy vấn/mã), Jina Reader dự phòng đọc nội dung, Groq/Gemini đề xuất phân loại có quote khớp. Route Next.js chỉ proxy – không có bản OSINT thứ hai | Duyệt chỉ preview trong phiên; không lưu audit, không cập nhật POSINT chính thức |
 | Cổng 2 (PDF) | PDF + OCR + parser quy tắc trong trình duyệt (`src/lib/ocr/`); LLM trích xuất **opt-in** (`backend/app/agents/document_graph.py`) | Không RAG, không lưu field đã duyệt |
 | Danh mục / Lượng tử | Chọn kịch bản dựng sẵn gần nhất từ workbook | Chưa có optimizer covariance, chưa có QAOA/Qiskit |
 | Neo4j | Adapter chỉ đọc đã kết nối | Graph rỗng (seed là lệnh chủ động, có cờ ghi) |
@@ -51,6 +51,7 @@ npm run test:e2e  # e2e (Playwright) – lần đầu chạy: npx playwright ins
 # Backend (terminal riêng, sau npm run data)
 python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt   # một lần
 backend/.venv/bin/uvicorn app.main:app --app-dir backend --port 8000 --reload --reload-dir backend/app
+backend/.venv/bin/pip install -r backend/requirements-dev.txt && (cd backend && .venv/bin/python -m pytest)   # test agent (provider giả lập, không gọi mạng)
 ```
 
 ## Quy tắc
@@ -67,7 +68,7 @@ backend/.venv/bin/uvicorn app.main:app --app-dir backend --port 8000 --reload --
 11. UI tiếng Việt; thuật ngữ chuyên môn có thể kèm tiếng Anh trong ngoặc.
 12. Mọi tính năng lượng tử hiển thị nhãn "Mô phỏng / Vòng 2"; không tuyên bố đã chạy QAOA hay trên phần cứng lượng tử. Slider danh mục chỉ chọn kịch bản có sẵn – không gọi là optimizer/backtest.
 13. Ưu tiên component shadcn/ui có sẵn trước khi tự viết.
-14. Đổi số liệu hoặc logic tính → chạy `npm test`; đổi UI/luồng → chạy `npm run test:e2e` và cập nhật `tests/e2e` nếu cần.
+14. Đổi số liệu hoặc logic tính → chạy `npm test`; đổi UI/luồng → chạy `npm run test:e2e` và cập nhật `tests/e2e` nếu cần; sửa `backend/app/agents` → chạy pytest backend.
 15. Thay đổi đáng kể (màn hình, schema, token, quy tắc, trạng thái tính năng) → cập nhật `docs/` tương ứng (đặc biệt `DEMO_STATUS.md`).
 16. **Cổng 2 / riêng tư:** PDF gốc **không bao giờ** rời trình duyệt; OCR và parser chạy cục bộ (không CDN). Chỉ gửi text đã trích tới LLM khi người dùng tick đồng ý riêng. Không đoán số khi OCR đọc hỏng – để `null` + cảnh báo. Không tuyên bố "zero retention" vượt quá những gì code đảm bảo. Sửa `lib/ocr` hoặc `document_graph.py` → chạy `npm test` và `npm run test:e2e` (có test PDF chữ và PDF scan).
 17. **Secret chỉ ở server**: không đặt key model/search/Neo4j trong biến `NEXT_PUBLIC_*`, không log key hay text tài liệu riêng tư. Neo4j trong runtime chỉ đọc, chỉ chạy truy vấn allow-list có tham số – không chạy Cypher do model sinh.

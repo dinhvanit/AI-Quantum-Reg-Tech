@@ -87,14 +87,14 @@ npm run test:e2e   # e2e (Playwright) – tự build và chạy server
 |---|---|---|
 | `NEXT_PUBLIC_USE_MOCK` | `false` trong `.env.example` | `true` → dữ liệu fixture trực tiếp; `false` → đọc qua FastAPI |
 | `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | Địa chỉ FastAPI |
-| `OSINT_SEARCH_PROVIDER` | `auto` | `auto`, `firecrawl` hoặc `tavily`; GDELT vẫn chạy cho một mã/lượt |
-| `FIRECRAWL_API_KEY` | *(không có)* | Bật tìm kiếm OSINT mục tiêu qua Firecrawl |
-| `TAVILY_API_KEY` | *(không có)* | Chọn Tavily làm targeted search bằng `OSINT_SEARCH_PROVIDER=tavily` |
-| `AI_PROVIDER` + provider key | *(không có)* | Chọn `groq` hoặc `gemini` để tạo đề xuất phân loại OSINT; key giữ ở server |
-| `JINA_API_KEY` | *(không bắt buộc)* | Tăng hạn mức khi Jina Reader trích một số bài chưa có excerpt |
+| `FIRECRAWL_API_KEY` | *(không có)* | **Nguồn tìm kiếm OSINT duy nhất**: 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính) cho mỗi mã. Thiếu key → hiển thị sự kiện workbook (`DEMO DATA`) |
+| `OSINT_FIRECRAWL_LIMIT` | `5` | Số kết quả mỗi truy vấn (1–10). Credit/mã ≈ 4 × (2 + giá trị này) |
+| `OSINT_LOOKBACK_YEARS` | `3` | Khoảng thời gian tìm kiếm (năm) |
+| `OSINT_JINA_FALLBACK` / `JINA_API_KEY` | `true` / *(không bắt buộc)* | Jina Reader đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được; key chỉ tăng hạn mức |
+| `AI_PROVIDER` (+ `OSINT_AI_PROVIDER`) + provider key | *(không có)* | Chọn `groq` hoặc `gemini` để tạo đề xuất phân loại; `OSINT_AI_PROVIDER` ghi đè riêng cho OSINT; key giữ ở server |
 | `NEO4J_CREDENTIALS_FILE` hoặc `NEO4J_URI` + `NEO4J_USERNAME` + `NEO4J_PASSWORD` | *(không có)* | Kết nối read-only graph context cho agent OSINT |
 
-CAPM, price-period return, Altman Z/X1–X5 và RFin base được tính lại từ đầu vào workbook, có đối chiếu công thức Excel. OSINT chạy qua LangGraph, dùng GDELT/Firecrawl hoặc Tavily, Jina Reader tùy chọn và Gemini/Groq qua LangChain để đề xuất phân loại có bằng chứng; mọi finding vẫn cần reviewer, chưa có audit bền vững hay cập nhật POSINT chính thức. Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Portfolio slider vẫn chọn kịch bản dựng sẵn, chưa chạy optimizer covariance hoặc QAOA.
+CAPM, price-period return, Altman Z/X1–X5 và RFin base được tính lại từ đầu vào workbook, có đối chiếu công thức Excel. OSINT chạy qua LangGraph (FastAPI), dùng Firecrawl tìm sự kiện xử phạt, Jina Reader làm dự phòng đọc nội dung và Gemini/Groq qua LangChain để đề xuất phân loại có bằng chứng; mọi finding vẫn cần reviewer, chưa có audit bền vững hay cập nhật POSINT chính thức. Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Portfolio slider vẫn chọn kịch bản dựng sẵn, chưa chạy optimizer covariance hoặc QAOA.
 
 Sao chép cấu hình mẫu từ `.env.example` sang `.env.local` nếu cần. Không thay toàn bộ `.env.local` hiện có nếu trong đó đã có key; chỉ thêm các dòng còn thiếu và khởi động lại Next.js sau khi sửa.
 

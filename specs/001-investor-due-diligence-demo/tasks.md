@@ -22,11 +22,12 @@ Implementation backlog derived from [spec.md](spec.md) and [plan.md](plan.md). T
 
 - [ ] T009 Create FastAPI service and typed API contract matching `contracts/openapi.yaml`.
 - [x] T009a Establish FastAPI service, health endpoint, paginated company listing, minimal assessment response, and SQLite pending-ticker registry. Remaining OpenAPI operations are not implemented.
-- [ ] T010 Implement provider interfaces for GDELT and one selected targeted-search provider.
-- [x] T010a Add bounded GDELT single-ticker discovery and selectable Firecrawl/Tavily targeted-search adapters to the OSINT route; retain workbook fallback when live providers return nothing.
+- [x] T010 Implement the search provider (Firecrawl only; GDELT/Tavily removed 2026-11-19).
+- [x] T010a Firecrawl penalty-category queries (tax, environment, securities, administrative) with date range and markdown scraping; workbook fallback when there is no key or no result.
+- [x] T010c Remove the duplicate Next.js OSINT implementation; the route only proxies FastAPI. Backend tests in `backend/tests/`.
 - [x] T010b Connect the company profile OSINT button through Next.js to FastAPI and return live search findings to the UI.
 - [ ] T011 Implement source extraction adapter and preserve source URL, fetch date, publication date, excerpt, and evidence quote.
-- [x] T011a Add bounded Jina Reader fallback for a headline without excerpt; validate external HTTPS hosts and accept AI evidence quotes only when they literally occur in fetched text. Durable fetched-at evidence records remain open.
+- [x] T011a Add bounded Jina Reader fallback (max 3) for results Firecrawl could not scrape; validate external HTTPS hosts and accept AI evidence quotes only when they literally occur in fetched text. Durable fetched-at evidence records remain open.
 - [ ] T012 Implement LangGraph OSINT workflow with explicit state, bounded retries, validation, and reviewer interrupt.
 - [x] T012a Implement bounded LangGraph `discover → graph_enrichment → extract → classify → validate` graph and route; persistent checkpointing and reviewer interrupt remain open.
 - [ ] T013 Implement server-side LLM provider adapter for Gemini/Groq with structured-output schema validation and graceful rate-limit handling.

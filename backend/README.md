@@ -23,7 +23,7 @@ The backend is separated into `api/routes`, `domain/contracts`, `repositories`, 
 
 Set `NEXT_PUBLIC_USE_MOCK=false` so public company/ESG/OSINT/methodology/scenario reads go through this API. Private PDFs remain browser-local. Portfolio reads still return workbook scenarios; the current solver endpoint does not run a covariance optimizer.
 
-The OSINT endpoint runs a bounded LangGraph (`discover → graph_enrichment → extract → classify → validate`). LangChain calls Groq or Gemini for structured proposals. Neo4j enrichment uses read-only, parameterized lookups; the model never supplies Cypher. Search findings stay unverified and reviewer actions remain session-local; there is no persistent audit/checkpoint store yet.
+The OSINT endpoint runs a bounded LangGraph (`discover → graph_enrichment → extract → classify → validate`). Discovery uses Firecrawl only: four penalty-category queries per ticker (tax, environment, securities, administrative) with article scraping; Jina Reader reads at most three results Firecrawl could not scrape. Without `FIRECRAWL_API_KEY` the scan returns workbook events labelled demo. LangChain calls Groq or Gemini for structured proposals. Neo4j enrichment uses read-only, parameterized lookups; the model never supplies Cypher. Search findings stay unverified and reviewer actions remain session-local; there is no persistent audit/checkpoint store yet.
 
 Local service secrets are loaded from the repository root `.env.local` (outside `src/`), which is ignored by Git. The app reads the supplied DB connection file through `NEO4J_CREDENTIALS_FILE`; the database password is not copied into the repo. In production, configure `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, and `NEO4J_DATABASE` in the FastAPI host's secret manager. Never put them in `NEXT_PUBLIC_*` variables.
 
@@ -35,3 +35,12 @@ NEO4J_ALLOW_DEMO_WRITE=true PYTHONPATH=backend backend/.venv/bin/python -m app.s
 ```
 
 This is an external database write and is intentionally not run automatically. The seed command does not import live crawler results. For hosted Aura MCP setup, IDE instructions, and the difference between database credentials and Aura API client credentials, see [Neo4j MCP setup](../docs/NEO4J_MCP.md).
+
+## Tests
+
+```bash
+backend/.venv/bin/pip install -r backend/requirements-dev.txt
+cd backend && .venv/bin/python -m pytest
+```
+
+Tests replace Firecrawl, Jina, Neo4j and the LLM with fakes; no network calls or credits are used.
