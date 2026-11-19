@@ -60,7 +60,7 @@ Số liệu còn thiếu (hiển thị "—") và các điểm cần nhóm tài 
 
 ## Dữ liệu
 
-Nguồn dữ liệu duy nhất: **`data/QuantumRegTech_Data.xlsx`**. Sửa số liệu trong file này → lưu → `npm run data && npm test`. Các file `src/data/*.json` được sinh tự động (trước `dev` / `build` / `test`) và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md).
+Nguồn dữ liệu duy nhất: **`data/QuantumRegTech_Data.xlsx`**. Sửa số liệu trong file này → lưu → `npm run data && npm test`. Các file `data/generated/*.json` (dùng chung cho Next.js và FastAPI) được sinh tự động (trước `dev` / `build` / `test`) và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md).
 
 **Thử Cổng 2:** mở `/private`, tải `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (bản scan → OCR) hoặc `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ). Đây là BCTC của doanh nghiệp **giả định**; đáp án ở `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
@@ -74,7 +74,7 @@ npm run data
 npm run dev        # http://localhost:3000; dùng UI-only mode nếu chưa bật FastAPI
 npm run build      # kiểm tra build trước khi deploy
 npm run lint
-npm run data       # Excel → src/data/*.json (tự chạy trước dev/build/test)
+npm run data       # Excel → data/generated/*.json (tự chạy trước dev/build/test)
 npm run assets     # tài nguyên OCR → public/vendor (tự chạy trước dev/build)
 npm test           # unit test (Vitest)
 npx playwright install chromium   # một lần, trước khi chạy e2e

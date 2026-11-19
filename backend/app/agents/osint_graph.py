@@ -13,7 +13,6 @@ import os
 import re
 import time
 from datetime import date
-from pathlib import Path
 from typing import Literal, TypedDict
 from urllib.parse import urlparse
 
@@ -21,8 +20,6 @@ import httpx
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
-ROOT = Path(__file__).resolve().parents[3]
-DATA_DIR = ROOT / "src" / "data"
 WORKFLOW = ["discover", "graph_enrichment", "extract", "classify", "validate"]
 PENALTY_BY_SEVERITY = {1: 0.05, 2: 0.1, 3: 0.2}
 MAX_FINDINGS = 20
@@ -68,7 +65,9 @@ class OsintState(TypedDict, total=False):
 
 
 def _read_json(name: str):
-    return json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
+    from app.repositories.workbook import load_data_file
+
+    return load_data_file(name)
 
 
 def normalize_text(value: str) -> str:

@@ -1,13 +1,13 @@
 // ⭐ Lớp truy cập dữ liệu duy nhất. Khi có backend thật, chỉ sửa file này.
-import companies from "@/data/companies.json";
-import zscore from "@/data/zscore.json";
-import esg from "@/data/esg.json";
-import osintEvents from "@/data/osint_events.json";
-import portfolio from "@/data/portfolio.json";
-import scenarios from "@/data/scenarios.json";
-import privateSample from "@/data/private_sample.json";
-import methodology from "@/data/methodology.json";
-import esgIndicators from "@/data/esg_indicators.json";
+import companies from "@data/companies.json";
+import zscore from "@data/zscore.json";
+import esg from "@data/esg.json";
+import osintEvents from "@data/osint_events.json";
+import portfolio from "@data/portfolio.json";
+import scenarios from "@data/scenarios.json";
+import privateSample from "@data/private_sample.json";
+import methodology from "@data/methodology.json";
+import esgIndicators from "@data/esg_indicators.json";
 import type {
   Company,
   Esg,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,12 +9,13 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env.local", override=False)
 
+from app.repositories.workbook import load_data_file  # noqa: E402
 from app.services.neo4j import Neo4jService  # noqa: E402
 
 
 def main() -> None:
-    companies = json.loads((ROOT / "src/data/companies.json").read_text(encoding="utf-8"))
-    events = json.loads((ROOT / "src/data/osint_events.json").read_text(encoding="utf-8"))
+    companies = load_data_file("companies.json")
+    events = load_data_file("osint_events.json")
     service = Neo4jService()
     try:
         status = service.status()

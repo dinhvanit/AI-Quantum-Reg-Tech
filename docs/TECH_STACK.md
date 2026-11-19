@@ -20,7 +20,7 @@
 | Đọc PDF / OCR (Cổng 2) | **pdf.js** (`pdfjs-dist` 6 – bản đã vá lỗi chạy mã khi mở PDF độc hại) + **Tesseract.js 7** + `@tesseract.js-data/vie` | Chạy trong trình duyệt; worker, lõi WASM, mô hình tiếng Việt tự host ở `public/vendor` |
 | State | **Zustand 5** (`src/store/portfolio.ts`) | Tham số α β γ δ, solver, danh sách DN theo dõi |
 | Font | **Be Vietnam Pro** (UI), **JetBrains Mono** (số liệu) qua `next/font` | Hỗ trợ tiếng Việt đầy đủ |
-| Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `src/data/` | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
+| Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `data/generated/` (dùng chung cho Next.js qua alias `@data/*` và FastAPI) | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
 | Xuất PDF | Trang `/report/[ticker]` + CSS `@media print` → *Save as PDF* | Không cần thư viện PDF |
 | Deploy | **Vercel** | Preview link cho mỗi branch/PR |
 | Code quality | ESLint (`eslint-config-next`) | Có sẵn khi khởi tạo Next.js (Prettier chưa cài) |
@@ -64,10 +64,12 @@ src/
 │   ├── globals.css               # Design token (UI_DESIGN §2) + style in A4
 │   ├── page.tsx                  # Dashboard tổng quan
 │   ├── loading.tsx · error.tsx · not-found.tsx
-│   ├── company/[ticker]/page.tsx # Cổng 1 – chi tiết doanh nghiệp (+ loading.tsx)
-│   ├── private/page.tsx          # Cổng 2 – upload bảo mật (mock)
+│   ├── stocks/page.tsx           # Danh sách cổ phiếu (universe, đăng ký mã pending_data)
+│   ├── company/[ticker]/page.tsx # Cổng 1 – chi tiết doanh nghiệp + OSINT scan (+ loading.tsx)
+│   ├── private/page.tsx          # Cổng 2 – PDF/OCR trong trình duyệt, LLM opt-in
 │   ├── portfolio/page.tsx        # Tối ưu danh mục + tab Lõi Lượng tử (+ loading.tsx)
-│   └── report/[ticker]/page.tsx  # Báo cáo thẩm định (in PDF) (+ loading.tsx)
+│   ├── report/[ticker]/page.tsx  # Báo cáo thẩm định (in PDF) (+ loading.tsx)
+│   └── api/                      # Route server cùng origin – chỉ proxy tới FastAPI (universe, osint/scan, private/extract)
 ├── components/
 │   ├── ui/                       # shadcn (tự sinh; slider.tsx có thêm prop getAriaLabel)
 │   ├── charts/                   # ZScoreGauge, EsgRadar, AllocationDonut, BacktestChart, QuboHeatmap, EmptyChart
@@ -77,8 +79,8 @@ src/
 │   ├── portfolio/                # PortfolioOptimizer, WeightSliders, WeightTable, CompareTable, QuantumCore
 │   ├── report/                   # ReportSection, PrintButton
 │   ├── common/                   # InfoTip, PageSkeleton
+│   ├── stocks/                   # StockUniverse
 │   └── layout/                   # Sidebar, Header, GatewayBadge
-├── data/                         # *.json SINH TỪ data/QuantumRegTech_Data.xlsx (npm run data, không commit)
 ├── lib/
 │   ├── api.ts                    # ⭐ Lớp truy cập dữ liệu duy nhất
 │   ├── types.ts                  # TypeScript types (khớp docs/DATA.md §5)
@@ -94,9 +96,22 @@ src/
 └── store/
     └── portfolio.ts              # Zustand store
 data/
-└── QuantumRegTech_Data.xlsx      # ⭐ Nguồn dữ liệu duy nhất (xem docs/DATA.md)
+├── QuantumRegTech_Data.xlsx      # ⭐ Nguồn dữ liệu duy nhất (xem docs/DATA.md)
+└── generated/                    # *.json SINH TỪ file Excel (npm run data, không commit) – hợp đồng dữ liệu chung cho Next.js và FastAPI
+backend/                          # FastAPI + LangGraph (Python, deploy riêng – xem backend/README.md)
+├── app/
+│   ├── main.py                   # Composition root
+│   ├── api/routes/               # /api/v1/* (companies, analysis, osint, private)
+│   ├── agents/                   # LangGraph: osint_graph.py (Firecrawl), document_graph.py (Cổng 2 opt-in)
+│   ├── core/config.py            # Đọc .env.local ở root, đường dẫn data/generated
+│   ├── domain/ · repositories/   # Hợp đồng Pydantic; đọc JSON workbook, registry SQLite pending_data
+│   ├── services/                 # Neo4j (read-only), market_data/ssi.py (chưa kích hoạt)
+│   └── ingestion/ · seed_graph.py # CLI chủ động: tải lịch sử SSI, seed Neo4j demo
+├── tests/                        # pytest – provider giả lập
+└── Dockerfile                    # Build từ root repo sau npm run data
+specs/ · .specify/                # Spec Kit: đặc tả tính năng, constitution
 scripts/
-├── build-data.mjs                # Excel → src/data/*.json (chạy trước dev / build / test)
+├── build-data.mjs                # Excel → data/generated/*.json (chạy trước dev / build / test)
 ├── copy-ocr-assets.mjs           # node_modules → public/vendor (worker pdf.js, lõi Tesseract, mô hình vie) – không commit
 └── make-sample-pdf.mjs           # Tạo BCTC mẫu (DN giả định) để thử Cổng 2
 tests/
@@ -107,7 +122,7 @@ tests/
 
 ## 5. Lớp `api.ts`
 
-Mỗi hàm có 2 nhánh: `USE_MOCK` (mặc định) đọc JSON trong `src/data/` (sinh từ file Excel – xem `docs/DATA.md` §1) với độ trễ giả lập; ngược lại gọi `NEXT_PUBLIC_API_URL`. `api.ts` import JSON tĩnh (không đọc Excel lúc chạy) nên dùng được cả ở Server lẫn Client Component và trang vẫn prerender tĩnh.
+Mỗi hàm có 2 nhánh: `USE_MOCK` (mặc định) đọc JSON trong `data/generated/` (alias `@data/*`, sinh từ file Excel – xem `docs/DATA.md` §1) với độ trễ giả lập; ngược lại gọi `NEXT_PUBLIC_API_URL`. `api.ts` import JSON tĩnh (không đọc Excel lúc chạy) nên dùng được cả ở Server lẫn Client Component và trang vẫn prerender tĩnh.
 
 ```ts
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
@@ -133,7 +148,7 @@ export async function getCompanies(): Promise<Company[]> {
 
 Trang không gọi thẳng nhiều hàm lẻ mà dùng `getOverviews()` / `getOverview(ticker)` trong `lib/overview.ts`.
 
-Quy tắc: **component không bao giờ `import` trực tiếp từ `src/data/`**.
+Quy tắc: **component không bao giờ `import` trực tiếp từ `@data/*`** (`data/generated/`).
 
 ## 6. Quy ước
 
@@ -147,7 +162,7 @@ Quy tắc: **component không bao giờ `import` trực tiếp từ `src/data/`*
 
 ```bash
 npm run lint && npx tsc --noEmit
-npm run data        # Excel → src/data/*.json (tự chạy trước dev / build / test)
+npm run data        # Excel → data/generated/*.json (tự chạy trước dev / build / test)
 npm run assets      # tài nguyên OCR → public/vendor (tự chạy sau install, trước dev / build)
 npm test            # Vitest – tests/unit (đối chiếu Z, Ri, lợi nhuận, RFin,Total, Σw, kết quả danh mục với Phụ lục B)
 npm run test:e2e    # Playwright – tự build + chạy server cổng 3100, test tests/e2e

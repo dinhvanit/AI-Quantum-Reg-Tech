@@ -28,7 +28,7 @@ flowchart LR
 - `backend/app/domain/`: typed entities and deterministic business rules.
 - `backend/app/repositories/`: persistence interfaces; PostgreSQL implementation replaces demo SQLite when shared deployment begins.
 - `backend/workers/`: queue consumers for long scans, PDF OCR/LLM, and report creation.
-- `data/`: source workbook only. Generated `src/data/*.json` remains a demo fixture, not the eventual system of record.
+- `data/`: source workbook only. Generated `data/generated/*.json` (shared by Next.js and FastAPI) remains a demo fixture, not the eventual system of record.
 
 ## Data and control flow
 

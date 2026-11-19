@@ -121,7 +121,7 @@ Constraints: `Σw=1`, long-only theo chính sách, max/min position, turnover/li
 
 `data/QuantumRegTech_Data.xlsx` hiện có 4 mã (VNM/SAB/MCM/SBT). README của workbook ghi rõ nó là **nguồn đầu vào thủ công**, không phải crawler. Financials có BCTC hợp nhất 2024 từ file AQ_Input v3 (file gốc không nằm trong repo); Market chỉ có beta và hai mức giá đầu/cuối không có timestamp; ESG score, weights, OSINT events và summary là dữ liệu được nhập từ Phụ lục B/AQ_Input. Excel giữ một số formula như CAPM, Z, weighted summary.
 
-`npm run data` đọc workbook rồi `scripts/build-data.mjs` tái tính CAPM, one-period price return, listed Altman Z/X1–X5/RFin base và weighted summary, đối chiếu với cached workbook formula, rồi sinh `src/data/*.json`. Nó tự chạy trước `dev/build/test`. Đây là **automation từ workbook → validation/formula → JSON/UI**, chưa tự động từ internet → source filing → cleaned financial dataset.
+`npm run data` đọc workbook rồi `scripts/build-data.mjs` tái tính CAPM, one-period price return, listed Altman Z/X1–X5/RFin base và weighted summary, đối chiếu với cached workbook formula, rồi sinh `data/generated/*.json`. Nó tự chạy trước `dev/build/test`. Đây là **automation từ workbook → validation/formula → JSON/UI**, chưa tự động từ internet → source filing → cleaned financial dataset.
 
 ## 8. Tự động hóa ingestion mục tiêu
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import events from "@/data/osint_events.json";
-import companies from "@/data/companies.json";
+import events from "@data/osint_events.json";
+import companies from "@data/companies.json";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

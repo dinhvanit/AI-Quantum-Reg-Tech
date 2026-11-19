@@ -1,4 +1,4 @@
-// Chuyển data/QuantumRegTech_Data.xlsx → src/data/*.json (schema = hợp đồng API, xem docs/DATA.md).
+// Chuyển data/QuantumRegTech_Data.xlsx → data/generated/*.json (schema = hợp đồng API, xem docs/DATA.md).
 // Chạy: npm run data (tự chạy trước dev / build / test). File JSON sinh ra không commit.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -7,7 +7,7 @@ import ExcelJS from "exceljs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = process.argv[2] ?? join(ROOT, "data", "QuantumRegTech_Data.xlsx");
-const OUT = join(ROOT, "src", "data");
+const OUT = join(ROOT, "data", "generated");
 const TODO = "TODO";
 
 /** Giá trị ô: công thức → kết quả đã lưu; rich text / hyperlink → chuỗi; rỗng → null. */

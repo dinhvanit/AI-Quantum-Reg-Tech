@@ -21,11 +21,12 @@ Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu d
 
 ## Kiến trúc
 ```
-data/QuantumRegTech_Data.xlsx ─(npm run data)─► src/data/*.json ─┬─► src/lib/api.ts ─► UI (Next.js)
-                                                                 └─► backend/ (FastAPI) ─► /api/v1/*
+data/QuantumRegTech_Data.xlsx ─(npm run data)─► data/generated/*.json ─┬─► src/lib/api.ts ─► UI (Next.js)
+                                                                        └─► backend/ (FastAPI) ─► /api/v1/*
 ```
 - **Frontend** (`src/`): Next.js. Route server `src/app/api/*` (universe, osint/scan, private/extract) là proxy cùng origin tới FastAPI.
 - **Backend** (`backend/app/`): FastAPI – `api/routes` (router `/api/v1`), `domain/contracts.py`, `repositories/` (workbook, universe SQLite cho mã `pending_data`), `services/` (Neo4j, SSI market data – chưa có credential), `agents/` (LangGraph OSINT + document).
+- Bố cục: `src/` chỉ chứa code Next.js; `backend/` là service Python riêng (deps, Dockerfile, deploy riêng) – không đặt Python vào `src/`. Dữ liệu dùng chung nằm ở `data/generated/` (Next.js import qua alias `@data/*`, FastAPI qua `GENERATED_DATA_DIR`).
 - `NEXT_PUBLIC_USE_MOCK=true` → UI đọc JSON trực tiếp, không cần backend; `false` → đọc qua FastAPI (`NEXT_PUBLIC_API_URL`, `QUANTUM_API_URL`).
 - Biến môi trường: `.env.example` → `.env.local` ở **gốc repo** (FastAPI cũng đọc file này). Chỉ thêm dòng thiếu, không ghi đè key có sẵn.
 
@@ -43,7 +44,7 @@ data/QuantumRegTech_Data.xlsx ─(npm run data)─► src/data/*.json ─┬─�
 npm run dev       # localhost:3000
 npm run build
 npm run lint
-npm run data      # data/QuantumRegTech_Data.xlsx → src/data/*.json (tự chạy trước dev/build/test)
+npm run data      # data/QuantumRegTech_Data.xlsx → data/generated/*.json (tự chạy trước dev/build/test)
 npm run assets    # tài nguyên OCR (pdf.js, Tesseract, mô hình vie) → public/vendor (tự chạy trước dev/build)
 npm test          # unit test (Vitest) – đối chiếu số liệu với Phụ lục B
 npm run test:e2e  # e2e (Playwright) – lần đầu chạy: npx playwright install chromium
@@ -55,7 +56,7 @@ backend/.venv/bin/pip install -r backend/requirements-dev.txt && (cd backend && 
 ```
 
 ## Quy tắc
-1. Component **chỉ lấy dữ liệu qua `src/lib/api.ts`**, không import trực tiếp `src/data/*.json`. Dữ liệu sửa ở **`data/QuantumRegTech_Data.xlsx`** – không sửa `src/data/*.json` (file sinh ra, không commit).
+1. Component **chỉ lấy dữ liệu qua `src/lib/api.ts`**, không import trực tiếp `@data/*` (`data/generated/*.json`). Dữ liệu sửa ở **`data/QuantumRegTech_Data.xlsx`** – không sửa `data/generated/*.json` (file sinh ra, không commit).
 2. Types trong `src/lib/types.ts` phải khớp schema ở `docs/DATA.md` §5. Đổi schema → cập nhật cả types, `scripts/build-data.mjs`, `docs/DATA.md` và hợp đồng phía backend (`backend/app/domain/contracts.py`) nếu endpoint liên quan.
 3. **Không tự bịa số liệu tài chính.** Chỉ dùng số trong file Excel (nguồn: Phụ lục B + AQ_Input); ô `TODO` để nguyên và hiển thị "—". Mâu thuẫn giữa các nguồn → ghi vào sheet `Cho_xac_nhan`, không tự chọn. Mã mới thiếu dữ liệu → `pending_data`, không sinh chỉ số.
 4. **LLM không tính** tỷ số, điểm, tỷ trọng, mức phạt hay ràng buộc – chỉ trích xuất/phân loại/giải thích có trích dẫn. Số tài chính do code tất định tính.
