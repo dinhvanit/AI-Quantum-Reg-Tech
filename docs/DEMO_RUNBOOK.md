@@ -6,8 +6,9 @@ Runbook này giúp người trình bày chạy đúng luồng và tránh mô t�
 
 ### Chuẩn bị môi trường
 
+Chạy từ thư mục gốc repo (cùng cấp `package.json`):
+
 ```bash
-cd /home/dinhvan/orca/workspaces/AI-Quantum-Reg-Tech/quick-build
 npm run data
 backend/.venv/bin/uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload --reload-dir backend/app
 ```
@@ -38,11 +39,11 @@ Lượt kiểm chứng gần nhất trên máy dev: HTTP 200, Firecrawl + Jina R
 
 ### Demo AI đọc PDF
 
-1. Vào `/private`, dùng tài liệu giả định `demo/pdf/02-mau-qrt-grey.pdf`.
+1. Vào `/private`, dùng tài liệu giả định `tests/fixtures/bctc-mau-qrt-2024.pdf`.
 2. Chọn đồng ý xử lý cục bộ. Tick thêm checkbox AI Agent để cho phép gửi text OCR/trích xuất (không gửi PDF gốc) tới Groq/Gemini.
 3. Trong Processing theo dõi `Đọc tài liệu/OCR → Chuẩn hoá → LLM Agent → Z'-Score`. Kết quả phải ghi provider/model, workflow `llm_extract → validate_evidence`, số proposal và số quote đã khớp.
 4. Bảng đánh dấu phương pháp theo từng field (`LLM`/`Rules`), trang và quote. Nếu model không trả evidence khớp, field giữ giá trị của parser hoặc để trống; không lấy proposal chưa kiểm chứng để tính Z'. Nếu hai phương pháp lệch nhau, so sánh dòng gốc trước khi trình bày.
-5. PDF scan `02-mau-qrt-grey-scan.pdf` minh hoạ OCR. Không gửi tài liệu thật/mật tới provider nếu chưa được phép.
+5. PDF scan `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` minh hoạ OCR. Không gửi tài liệu thật/mật tới provider nếu chưa được phép.
 - Khi không có kết quả live, app dùng sự kiện workbook và gắn nhãn `DEMO DATA`.
 - Hồ sơ OSINT hiển thị các bước agent và trạng thái Neo4j. Hiện Aura đã kết nối nhưng graph rỗng; muốn nạp dữ liệu workbook demo thì chạy lệnh seed có cờ ghi chủ động trong [backend README](../backend/README.md).
 - Cấu hình MCP cho IDE nằm trong `.vscode/mcp.json`. Bật Tool authentication trong Aura Console, mở VS Code và hoàn tất OAuth trong browser. Chỉ đọc graph khi demo.
@@ -51,9 +52,9 @@ Lượt kiểm chứng gần nhất trên máy dev: HTTP 200, Firecrawl + Jina R
 
 ### Tệp PDF demo
 
-- `demo/pdf/02-mau-qrt-grey.pdf`: PDF chữ, công ty giả định, dùng để thấy trích xuất và vùng Grey.
-- `demo/pdf/02-mau-qrt-grey-scan.pdf`: PDF scan, dùng để minh họa OCR.
-- Các file `01-an-phat-*` và `03-binh-minh-*` cũng là doanh nghiệp giả định; xem đáp án/ghi chú tại `demo/pdf/README.md`.
+- `tests/fixtures/bctc-mau-qrt-2024.pdf`: PDF chữ, công ty giả định, dùng để thấy trích xuất và vùng Grey.
+- `tests/fixtures/bctc-mau-qrt-2024-scan.pdf`: PDF scan, dùng để minh họa OCR.
+- Đáp án: `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Đây cũng là fixture của e2e test – không sửa tay; tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
 Đóng các tab/file cá nhân trước khi trình chiếu. Không dùng hồ sơ thẩm định thật nếu chưa được phép gửi/hiển thị trong buổi demo.
 
@@ -86,9 +87,9 @@ Mở `/stocks`, nêu universe hiện tại có bốn hồ sơ đầy đủ. Bấ
 
 ### 4:00–5:20 — PDF nội bộ
 
-1. Mở `/private` và dùng `demo/pdf/02-mau-qrt-grey.pdf`.
+1. Mở `/private` và dùng `tests/fixtures/bctc-mau-qrt-2024.pdf`.
 2. Kiểm tra extracted rows, trang/dòng, X1–X5 và Z′ nếu đủ inputs.
-3. Nếu còn thời gian, dùng `02-mau-qrt-grey-scan.pdf` để cho thấy OCR.
+3. Nếu còn thời gian, dùng `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` để cho thấy OCR.
 4. Nêu rõ đây là BCTC giả định; OCR/parser chạy trong trình duyệt, LLM extraction chỉ bật khi có opt-in; kết quả chưa ghi vào hồ sơ cổ phiếu public và chưa có RAG.
 
 ### 5:20–6:00 — Báo cáo
@@ -121,6 +122,6 @@ Thiết kế universe không giới hạn ở bốn mã. Để một mã có ph�
 | Document Agent `RateLimitError` | Chờ quota provider hồi phục hoặc đổi `AI_PROVIDER` sang provider khác đã cấu hình; kết quả Rules vẫn hiển thị. Không gửi lại liên tục vì sẽ tăng rate limit |
 | Document Agent báo 413 | Bản hiện tại giới hạn và lọc context trước khi gửi. Nếu provider vẫn từ chối request, dùng PDF ngắn hơn hoặc giảm số trang; parser Rules vẫn là fallback |
 | OCR chưa tải worker | Chờ trang nạp tài nguyên hoặc tải lại; dùng PDF chữ làm đường dự phòng |
-| Kết quả PDF thiếu một số ô | Dùng PDF chữ `02-mau-qrt-grey.pdf`; chỉ rõ parser giữ thiếu thay vì đoán |
+| Kết quả PDF thiếu một số ô | Dùng PDF chữ `tests/fixtures/bctc-mau-qrt-2024.pdf`; chỉ rõ parser giữ thiếu thay vì đoán |
 | Portfolio báo scenario/constraint chưa hỗ trợ | Quay lại preset demo 4 mã; đây là giới hạn dữ liệu/scenario hiện có |
 | Sửa workbook mà app vẫn giữ dữ liệu cũ | Dừng server, chạy `npm run data`, sau đó khởi động lại `npm run dev` |

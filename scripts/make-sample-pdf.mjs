@@ -1,6 +1,5 @@
-// Tạo BCTC mẫu của các DOANH NGHIỆP GIẢ ĐỊNH để kiểm thử Cổng 2 (đọc PDF + OCR).
-//   node scripts/make-sample-pdf.mjs          → tests/fixtures/bctc-mau-qrt-2024{,-scan}.pdf (+ .expected.json) – dùng cho e2e
-//   node scripts/make-sample-pdf.mjs --demo   → demo/pdf/: 3 DN (Safe / Grey / Distress) × 3 dạng tệp + README.md đáp án
+// Tạo BCTC mẫu của DOANH NGHIỆP GIẢ ĐỊNH để kiểm thử Cổng 2 (đọc PDF + OCR).
+//   node scripts/make-sample-pdf.mjs   → tests/fixtures/bctc-mau-qrt-2024{,-scan}.pdf (+ .expected.json) – dùng cho e2e
 // Cần: npx playwright install chromium; font Noto Serif (hoặc Liberation Serif) có dấu tiếng Việt.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,9 +14,7 @@ const bs = (cur, prev = Math.round(cur * 0.93)) => ({ cur, prev });
 
 const SCENARIOS = {
   qrt: {
-    slug: "02-mau-qrt-grey",
     company: "CÔNG TY CỔ PHẦN THỰC PHẨM MẪU QRT",
-    note: "Khá – vùng Grey",
     leaves: {
       cash: bs(98_341_225_004, 76_120_448_391), stInvest: bs(45_000_000_000, 30_000_000_000),
       receivables: bs(201_558_903_117, 188_432_009_215), inventory: bs(244_117_620_435, 229_771_106_340),
@@ -32,39 +29,6 @@ const SCENARIOS = {
       finCost: bs(38_902_114_550, 41_225_870_331), interest: bs(31_448_917_006, 34_902_118_440),
       selling: bs(228_405_337_912, 211_004_558_906), admin: bs(87_114_020_771, 80_336_115_025),
       otherInc: bs(1_204_556_018, 980_117_402), otherExp: bs(452_085_373, 611_225_018), tax: bs(28_581_066_044, 24_220_531_870),
-    },
-  },
-  anphat: {
-    slug: "01-an-phat-safe",
-    company: "CÔNG TY CỔ PHẦN SỮA VÀ ĐỒ UỐNG AN PHÁT (GIẢ ĐỊNH)",
-    note: "Khoẻ – vùng Safe",
-    leaves: {
-      cash: bs(142_118_500_220), stInvest: bs(60_000_000_000, 45_000_000_000), receivables: bs(151_402_330_118),
-      inventory: bs(150_227_604_501), otherCurrent: bs(16_251_565_161),
-      fixed: bs(231_550_118_004), cip: bs(18_330_402_550), ltInvest: bs(20_000_000_000, 20_000_000_000), otherLong: bs(10_119_479_446),
-      payables: bs(88_440_215_330), stLoans: bs(40_000_000_000, 52_000_000_000), otherStLiab: bs(21_559_784_670),
-      ltLoans: bs(50_000_000_000, 64_000_000_000),
-      capital: bs(300_000_000_000, 300_000_000_000), RE: bs(260_118_450_772),
-      grossRev: bs(1_452_118_300_450), deductions: bs(51_004_118_220), cogs: bs(1_030_225_418_990),
-      finIncome: bs(9_112_500_300), finCost: bs(8_440_117_225), interest: bs(6_902_118_004),
-      selling: bs(152_338_004_118), admin: bs(71_004_330_227),
-      otherInc: bs(2_104_558_302), otherExp: bs(903_118_440), tax: bs(29_870_441_118),
-    },
-  },
-  binhminh: {
-    slug: "03-binh-minh-distress",
-    company: "CÔNG TY CỔ PHẦN NÔNG SẢN THỰC PHẨM BÌNH MINH (GIẢ ĐỊNH)",
-    note: "Kiệt quệ – vùng Distress (lỗ luỹ kế, lỗ trước thuế)",
-    leaves: {
-      cash: bs(12_405_118_330), stInvest: bs(0, 0), receivables: bs(118_330_204_551), inventory: bs(150_118_402_330),
-      otherCurrent: bs(19_146_274_789),
-      fixed: bs(780_225_118_400), cip: bs(70_330_118_225), ltInvest: bs(20_000_000_000, 20_000_000_000), otherLong: bs(29_444_763_375),
-      payables: bs(260_118_330_402), stLoans: bs(380_000_000_000), otherStLiab: bs(59_881_669_598), ltLoans: bs(280_000_000_000),
-      capital: bs(350_000_000_000, 350_000_000_000), RE: bs(-180_118_402_330, -160_402_118_225),
-      grossRev: bs(931_402_118_330), deductions: bs(31_118_402_225), cogs: bs(812_330_118_402),
-      finIncome: bs(2_118_330_402), finCost: bs(102_330_118_225), interest: bs(95_118_402_330),
-      selling: bs(30_118_402_118), admin: bs(22_402_118_330),
-      otherInc: bs(5_102_330_118), otherExp: bs(402_118_330), tax: bs(0, 0),
     },
   },
 };
@@ -139,13 +103,6 @@ function build(L) {
   return { balance, income, fields };
 }
 
-/** Z' (Altman 1983) – cùng công thức với src/lib/ocr/zprime.ts, để ghi đáp án. */
-function zPrime(f) {
-  const x = [(f.CA - f.CL) / f.TA, f.RE / f.TA, (f.PBT + f.Interest) / f.TA, f.EQ / f.TL, f.Revenue / f.TA];
-  const z = 0.717 * x[0] + 0.847 * x[1] + 3.107 * x[2] + 0.42 * x[3] + 0.998 * x[4];
-  return { x, z, zone: z > 2.9 ? "Safe" : z >= 1.23 ? "Grey" : "Distress" };
-}
-
 // ---------- HTML ----------
 const vnd = (n) => (n < 0 ? `(${Math.abs(n).toLocaleString("de-DE")})` : n.toLocaleString("de-DE"));
 
@@ -206,105 +163,39 @@ async function textPdf(browser, html, path) {
   await p.close();
 }
 
-/**
- * PDF chỉ có ảnh (bản scan). quality "clean" ≈ 200 dpi, "rough" ≈ 150 dpi + nghiêng + nhiễu + nén JPEG mạnh
- * (giống scan bằng máy văn phòng / chụp điện thoại).
- */
-async function scanPdf(browser, html, path, quality) {
-  const rough = quality === "rough";
-  const shot = await browser.newPage({ viewport: { width: 794, height: 1123 }, deviceScaleFactor: rough ? 1.6 : 2.2 });
+/** PDF chỉ có ảnh (bản scan sạch ≈ 200 dpi) – buộc app chạy OCR. */
+async function scanPdf(browser, html, path) {
+  const shot = await browser.newPage({ viewport: { width: 794, height: 1123 }, deviceScaleFactor: 2.2 });
   await shot.setContent(html, { waitUntil: "load" });
   const images = [];
   for (const el of await shot.locator("section.page").all()) {
-    images.push((await el.screenshot({ type: "jpeg", quality: rough ? 55 : 82 })).toString("base64"));
+    images.push((await el.screenshot({ type: "jpeg", quality: 82 })).toString("base64"));
   }
   await shot.close();
-  const style = rough
-    ? "transform:rotate(0.5deg) translate(1.5mm,1mm);filter:grayscale(1) contrast(1.15) brightness(0.96) blur(0.25px)"
-    : "filter:grayscale(1) contrast(1.05)";
-  // Nhiễu hạt tiêu cho bản "rough" (vẽ bằng canvas trong trang, seed cố định để tệp tái lập được).
-  const noise = rough
-    ? `<script>
-      let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-      document.querySelectorAll("canvas").forEach((c) => { const g = c.getContext("2d");
-        for (let i = 0; i < 2600; i++) { g.fillStyle = "rgba(0,0,0," + (0.15 + rnd() * 0.35) + ")"; g.fillRect(rnd() * c.width, rnd() * c.height, 1 + rnd() * 1.5, 1 + rnd() * 1.5); } });
-      </script>`
-    : "";
   const scanHtml = `<!doctype html><html><head><style>@page{size:A4;margin:0}body{margin:0;background:#fff}
     .sheet{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;background:#f7f6f2}
-    .sheet img{display:block;width:210mm;height:297mm;${style}}
-    .sheet canvas{position:absolute;inset:0;width:210mm;height:297mm}</style></head><body>
-    ${images.map((b) => `<div class="sheet"><img src="data:image/jpeg;base64,${b}"/>${rough ? '<canvas width="794" height="1123"></canvas>' : ""}</div>`).join("")}
-    ${noise}</body></html>`;
+    .sheet img{display:block;width:210mm;height:297mm;filter:grayscale(1) contrast(1.05)}</style></head><body>
+    ${images.map((b) => `<div class="sheet"><img src="data:image/jpeg;base64,${b}"/></div>`).join("")}</body></html>`;
   const s = await browser.newPage();
   await s.setContent(scanHtml, { waitUntil: "load" });
   await s.pdf({ path, format: "A4", printBackground: true, preferCSSPageSize: true });
   await s.close();
 }
 
-const fmt = (n) => n.toLocaleString("de-DE");
-const fmtZ = (n) => n.toFixed(2).replace(".", ",");
-
 const browser = await chromium.launch();
 try {
-  if (process.argv.includes("--demo")) {
-    const OUT = join(ROOT, "demo", "pdf");
-    mkdirSync(OUT, { recursive: true });
-    const answers = {};
-    const readme = [
-      "# PDF demo – Cổng 2 (Nạp dữ liệu bảo mật)",
-      "",
-      "BCTC của **doanh nghiệp giả định** (không phải DN thật), sinh bằng `node scripts/make-sample-pdf.mjs --demo`.",
-      "Mở http://localhost:3000/private → tải một tệp → tích cam kết → **Bắt đầu phân tích**, rồi so với đáp án dưới đây.",
-      "",
-      "| Dạng tệp | Kiểm tra gì |",
-      "|---|---|",
-      "| `*.pdf` | PDF có lớp chữ – đọc trực tiếp, không cần OCR (≈ 1–2 giây) |",
-      "| `*-scan.pdf` | Bản scan sạch ~200 dpi – buộc OCR (≈ 5–7 giây) |",
-      "| `*-scan-xau.pdf` | Bản scan xấu: ~150 dpi, nghiêng 0,5°, nhiễu hạt, nén JPEG mạnh – thử độ bền OCR; có thể thiếu / sai vài chỉ tiêu → app phải báo cảnh báo thay vì đoán |",
-      "",
-    ];
-    for (const sc of Object.values(SCENARIOS)) {
-      const data = build(sc.leaves);
-      const html = docHtml(sc.company, data);
-      await textPdf(browser, html, join(OUT, `${sc.slug}.pdf`));
-      await scanPdf(browser, html, join(OUT, `${sc.slug}-scan.pdf`), "clean");
-      await scanPdf(browser, html, join(OUT, `${sc.slug}-scan-xau.pdf`), "rough");
-      const zp = zPrime(data.fields);
-      answers[sc.slug] = { company: sc.company, fields: data.fields, zPrime: Number(zp.z.toFixed(4)), zone: zp.zone };
-      console.log(`✓ ${sc.slug}: Z' = ${fmtZ(zp.z)} (${zp.zone})`);
-      readme.push(
-        `## ${sc.slug} – ${sc.note}`,
-        "",
-        `**${sc.company}** · Z' ≈ **${fmtZ(zp.z)} → ${zp.zone}** · X1–X5 = ${zp.x.map((v) => v.toFixed(3).replace(".", ",")).join(" · ")}`,
-        "",
-        "| Chỉ tiêu | Mã số | Giá trị đúng (VND) |",
-        "|---|---|---|",
-        ...[
-          ["Tài sản ngắn hạn", "100", "CA"], ["Tổng cộng tài sản", "270", "TA"], ["Nợ ngắn hạn", "310", "CL"],
-          ["Nợ phải trả", "300", "TL"], ["Vốn chủ sở hữu", "400", "EQ"], ["LNST chưa phân phối", "421", "RE"],
-          ["Doanh thu thuần", "10", "Revenue"], ["Tổng LN kế toán trước thuế", "50", "PBT"], ["Chi phí lãi vay", "23", "Interest"],
-        ].map(([label, code, k]) => `| ${label} | ${code} | ${fmt(data.fields[k])} |`),
-        ""
-      );
-    }
-    writeFileSync(join(OUT, "README.md"), readme.join("\n"));
-    writeFileSync(join(OUT, "expected.json"), JSON.stringify(answers, null, 2) + "\n");
-    console.log("✓ demo/pdf/README.md (đáp án)");
-  } else {
-    const OUT = join(ROOT, "tests", "fixtures");
-    mkdirSync(OUT, { recursive: true });
-    const sc = SCENARIOS.qrt;
-    const data = build(sc.leaves);
-    const html = docHtml(sc.company, data);
-    await textPdf(browser, html, join(OUT, "bctc-mau-qrt-2024.pdf"));
-    await scanPdf(browser, html, join(OUT, "bctc-mau-qrt-2024-scan.pdf"), "clean");
-    writeFileSync(
-      join(OUT, "bctc-mau-qrt-2024.expected.json"),
-      JSON.stringify({ company: sc.company, fiscalYear: 2024, unit: "VND", fields: data.fields }, null, 2) + "\n"
-    );
-    console.log("✓ tests/fixtures/bctc-mau-qrt-2024{,-scan}.pdf", data.fields);
-  }
+  const OUT = join(ROOT, "tests", "fixtures");
+  mkdirSync(OUT, { recursive: true });
+  const sc = SCENARIOS.qrt;
+  const data = build(sc.leaves);
+  const html = docHtml(sc.company, data);
+  await textPdf(browser, html, join(OUT, "bctc-mau-qrt-2024.pdf"));
+  await scanPdf(browser, html, join(OUT, "bctc-mau-qrt-2024-scan.pdf"));
+  writeFileSync(
+    join(OUT, "bctc-mau-qrt-2024.expected.json"),
+    JSON.stringify({ company: sc.company, fiscalYear: 2024, unit: "VND", fields: data.fields }, null, 2) + "\n"
+  );
+  console.log("✓ tests/fixtures/bctc-mau-qrt-2024{,-scan}.pdf", data.fields);
 } finally {
   await browser.close();
 }

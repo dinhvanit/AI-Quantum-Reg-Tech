@@ -68,7 +68,7 @@ Luồng PDF hiện là nhánh thẩm định riêng. Kết quả PDF **chưa đ�
 ### Bước 4 — Nạp hồ sơ PDF nội bộ
 
 **Route:** `/private`.
-**File gợi ý:** `demo/pdf/02-mau-qrt-grey.pdf` (doanh nghiệp giả định); bản scan có hậu tố `-scan.pdf` để minh họa OCR.
+**File gợi ý:** `tests/fixtures/bctc-mau-qrt-2024.pdf` (doanh nghiệp giả định); bản scan `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` để minh họa OCR.
 
 1. Thêm PDF, xác nhận quyền cung cấp và bấm xử lý.
 2. Hệ thống đọc text hoặc OCR trong trình duyệt, sau đó parser tìm các chỉ tiêu BCTC hỗ trợ. Có thể bật AI Agent bằng checkbox opt-in riêng; chỉ text OCR/extracted được gửi, không gửi PDF gốc.
