@@ -10,11 +10,13 @@ export function ProcessingPanel({
   fileName,
   message,
   onCancel,
+  aiEnabled,
 }: {
   stage: PrivateStage | null;
   fileName: string;
   message?: string | null;
   onCancel: () => void;
+  aiEnabled: boolean;
 }) {
   const idx = stage ? PRIVATE_STAGES.findIndex((s) => s.id === stage) : -1;
   const pct = Math.round(((idx + 0.5) / PRIVATE_STAGES.length) * 100);
@@ -31,19 +33,20 @@ export function ProcessingPanel({
 
       <ol className="space-y-2" aria-live="polite">
         {PRIVATE_STAGES.map((s, i) => {
-          const state = i < idx ? "done" : i === idx ? "running" : "pending";
+          const skipped = s.id === "ai" && !aiEnabled;
+          const state = skipped ? "skipped" : i < idx ? "done" : i === idx ? "running" : "pending";
           return (
             <li
               key={s.id}
               className={cn(
                 "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors",
                 state === "running" && "border-primary/40 bg-primary/5",
-                state === "pending" && "text-muted-foreground"
+                (state === "pending" || state === "skipped") && "text-muted-foreground"
               )}
             >
               {state === "done" && <CheckCircle2 className="size-4 text-risk-safe" />}
               {state === "running" && <Loader2 className="size-4 animate-spin text-primary" />}
-              {state === "pending" && <Circle className="size-4" />}
+              {(state === "pending" || state === "skipped") && <Circle className="size-4" />}
               <span className="flex-1">
                 {s.label}
                 {state === "running" && message && (
@@ -53,7 +56,7 @@ export function ProcessingPanel({
                 )}
               </span>
               <span className="text-[11px] text-muted-foreground">
-                {state === "done" ? "Hoàn tất" : state === "running" ? "Đang chạy…" : "Chờ"}
+                {skipped ? "Bỏ qua" : state === "done" ? "Hoàn tất" : state === "running" ? "Đang chạy…" : "Chờ"}
               </span>
             </li>
           );

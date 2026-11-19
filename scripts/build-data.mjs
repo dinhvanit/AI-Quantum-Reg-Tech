@@ -56,39 +56,106 @@ await wb.xlsx.readFile(SRC);
 
 const params = kv(readTable(wb, "Params"));
 const market = Object.fromEntries(readTable(wb, "Market").map((r) => [r.ticker, r]));
+const financials = Object.fromEntries(readTable(wb, "Financials").map((r) => [r.ticker, r]));
+const referenceZ = Object.fromEntries(readTable(wb, "ZScore").map((r) => [r.ticker, r]));
+const esgRows = readTable(wb, "ESG");
+const esgByTicker = Object.fromEntries(esgRows.map((r) => [r.ticker, r]));
 
-const companies = readTable(wb, "Companies").map((c) => {
+const requiredNumber = (value, where) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${where}: thiếu đầu vào số hợp lệ`);
+  return value;
+};
+const ratio = (numerator, denominator, where) => {
+  const d = requiredNumber(denominator, `${where}.denominator`);
+  if (d === 0) throw new Error(`${where}: mẫu số bằng 0`);
+  return requiredNumber(numerator, `${where}.numerator`) / d;
+};
+const assertMatchesWorkbook = (actual, expected, where, tolerance = 0.0002) => {
+  if (typeof expected !== "number" || Math.abs(actual - expected) > tolerance) {
+    throw new Error(`${where}: công thức trong financial engine (${actual}) lệch giá trị đối chiếu workbook (${expected})`);
+  }
+};
+const zZone = (z) => z > params.z_safe ? "safe" : z >= params.z_distress ? "grey" : "distress";
+const rfinBaseFromZ = (z) => {
+  if (z > params.z_safe) return 0.1;
+  if (z < params.z_distress) return 0.7;
+  return 0.7 - (z - params.z_distress) * (0.6 / (params.z_safe - params.z_distress));
+};
+
+const requiredFinanceKeys = ["CA", "TA", "CL", "TL", "RE", "Revenue", "PBT", "Interest", "MktCap"];
+const companiesSource = readTable(wb, "Companies");
+const pendingUniverse = [];
+const analysisReady = companiesSource.filter((company) => {
+  const marketRow = market[company.ticker];
+  const financialRow = financials[company.ticker];
+  const esgRow = esgByTicker[company.ticker];
+  const missing = [];
+  if (!company.name) missing.push("company_name");
+  if (!marketRow || typeof marketRow.beta !== "number") missing.push("market_beta");
+  if (!marketRow || typeof marketRow.price_start_next !== "number" || typeof marketRow.price_end_next !== "number") missing.push("market_prices");
+  if (!financialRow) missing.push("financials");
+  else for (const key of requiredFinanceKeys) if (typeof financialRow[key] !== "number") missing.push(`financials.${key}`);
+  if (!referenceZ[company.ticker]) missing.push("altman_methodology_inputs");
+  if (!esgRow || typeof esgRow.esg_score !== "number") missing.push("esg_score");
+  if (missing.length) {
+    pendingUniverse.push({
+      ticker: company.ticker,
+      name: company.name ?? null,
+      exchange: todo(company.exchange),
+      subsector: company.subsector ?? null,
+      availability: "pending_data",
+      missing_required_fields: missing,
+      source_reference: financialRow?.source ?? `workbook:${SRC.replace(ROOT + "/", "")}`,
+    });
+    return false;
+  }
+  return true;
+});
+
+const companies = analysisReady.map((c) => {
   const m = market[c.ticker];
-  if (!m) throw new Error(`Market thiếu mã ${c.ticker}`);
+  const f = financials[c.ticker];
+  if (!m || !f) throw new Error(`Thiếu đầu vào Market hoặc Financials cho ${c.ticker}`);
+  const beta = requiredNumber(m.beta, `Market ${c.ticker}.beta`);
+  const expectedReturn = requiredNumber(params.rf, "Params.rf") + beta * requiredNumber(params.erp, "Params.erp");
+  const realizedReturn = ratio(m.price_end_next, m.price_start_next, `Market ${c.ticker}.realizedReturn`) - 1;
+  assertMatchesWorkbook(expectedReturn, m.expected_return, `Market.${c.ticker}.expected_return`, 1e-8);
+  assertMatchesWorkbook(realizedReturn, m.realized_return, `Market.${c.ticker}.realized_return`, 1e-8);
   return {
     ticker: c.ticker,
     name: c.name,
     exchange: todo(c.exchange),
     subsector: c.subsector,
     listed: c.listed === 1,
-    beta: num(m.beta, `Market ${c.ticker}.beta`),
-    expectedReturn: num(m.expected_return, `Market ${c.ticker}.expected_return`),
-    realizedReturn: num(m.realized_return, `Market ${c.ticker}.realized_return`),
+    beta,
+    expectedReturn,
+    realizedReturn,
   };
 });
 
 const zscore = Object.fromEntries(
-  readTable(wb, "ZScore").map((z) => [
-    z.ticker,
-    {
-      model: z.model,
-      x1: todo(z.x1), x2: todo(z.x2), x3: todo(z.x3), x4: todo(z.x4), x5: todo(z.x5),
-      z: num(z.z, `ZScore ${z.ticker}.z`),
-      zone: z.zone,
-      rfinBase: num(z.rfin_base, `ZScore ${z.ticker}.rfin_base`),
-      fiscalYear: z.fiscal_year,
-    },
-  ])
+  Object.entries(financials).filter(([ticker]) => analysisReady.some((company) => company.ticker === ticker)).map(([ticker, f]) => {
+    const x = {
+      x1: ratio(requiredNumber(f.CA, `${ticker}.CA`) - requiredNumber(f.CL, `${ticker}.CL`), f.TA, `${ticker}.X1`),
+      x2: ratio(f.RE, f.TA, `${ticker}.X2`),
+      // Workbook proxy: EBT + interest expense is used because EBIT is not provided.
+      x3: ratio(requiredNumber(f.PBT, `${ticker}.PBT`) + requiredNumber(f.Interest, `${ticker}.Interest`), f.TA, `${ticker}.X3`),
+      x4: ratio(f.MktCap, f.TL, `${ticker}.X4`),
+      x5: ratio(f.Revenue, f.TA, `${ticker}.X5`),
+    };
+    const z = 1.2 * x.x1 + 1.4 * x.x2 + 3.3 * x.x3 + 0.6 * x.x4 + x.x5;
+    const ref = referenceZ[ticker];
+    for (const key of Object.keys(x)) assertMatchesWorkbook(x[key], ref?.[key], `ZScore.${ticker}.${key}`);
+    assertMatchesWorkbook(z, ref?.z, `ZScore.${ticker}.z`);
+    const zone = zZone(z);
+    assertMatchesWorkbook(rfinBaseFromZ(z), ref?.rfin_base, `ZScore.${ticker}.rfin_base`);
+    return [ticker, { model: "Z", ...x, z, zone, rfinBase: rfinBaseFromZ(z), fiscalYear: f.fiscal_year, source: f.source }];
+  })
 );
 
 const evidence = readTable(wb, "ESG_Evidence");
 const esg = Object.fromEntries(
-  readTable(wb, "ESG").map((e) => [
+  esgRows.filter((e) => analysisReady.some((company) => company.ticker === e.ticker)).map((e) => [
     e.ticker,
     {
       esgScore: num(e.esg_score, `ESG ${e.ticker}.esg_score`),
@@ -125,6 +192,27 @@ const osint = readTable(wb, "OSINT").map((e) => ({
 const weights = readTable(wb, "Portfolio");
 const summary = Object.fromEntries(readTable(wb, "Portfolio_Summary").map((s) => [s.scenario, s]));
 const pick = (col) => Object.fromEntries(weights.map((w) => [w.ticker, w[col]]));
+const companyByTicker = Object.fromEntries(companies.map((company) => [company.ticker, company]));
+const calculatePortfolioSummary = (scenario, weightColumn) => {
+  const scenarioWeights = weights.map((row) => ({
+    ticker: row.ticker,
+    weight: requiredNumber(row[weightColumn], `Portfolio.${row.ticker}.${weightColumn}`),
+  }));
+  const weightTotal = scenarioWeights.reduce((sum, row) => sum + row.weight, 0);
+  assertMatchesWorkbook(weightTotal, 1, `Portfolio.${scenario}.weight_total`, 1e-8);
+  for (const row of scenarioWeights) {
+    if (row.weight < params.min_weight - 1e-9 || row.weight > params.max_weight + 1e-9) {
+      throw new Error(`Portfolio.${scenario}.${row.ticker}: tỷ trọng ngoài giới hạn min/max`);
+    }
+  }
+  const expectedReturn = scenarioWeights.reduce((sum, row) => sum + row.weight * companyByTicker[row.ticker].expectedReturn, 0);
+  const realizedReturn = scenarioWeights.reduce((sum, row) => sum + row.weight * companyByTicker[row.ticker].realizedReturn, 0);
+  assertMatchesWorkbook(expectedReturn, summary[scenario]?.expected_return, `Portfolio_Summary.${scenario}.expected_return`);
+  assertMatchesWorkbook(realizedReturn, summary[scenario]?.realized_return, `Portfolio_Summary.${scenario}.realized_return`);
+  return { expectedReturn, realizedReturn };
+};
+const baselineSummary = calculatePortfolioSummary("baseline", "w_baseline");
+const esgAwareSummary = calculatePortfolioSummary("esg_aware", "w_esg_aware");
 
 // Ma trận QUBO: vùng B3:Q18 – đủ số thì dùng, còn lại "TODO".
 const qws = wb.getWorksheet("QUBO_Matrix");
@@ -137,8 +225,8 @@ const portfolio = {
   constraints: { minWeight: params.min_weight, maxWeight: params.max_weight },
   params: { alpha: todo(params.alpha), beta: todo(params.beta), gamma: todo(params.gamma), delta: todo(params.delta) },
   solver: params.solver,
-  esgAware: { weights: pick("w_esg_aware"), expectedReturn: summary.esg_aware.expected_return, realizedReturn: summary.esg_aware.realized_return },
-  baseline: { weights: pick("w_baseline"), expectedReturn: summary.baseline.expected_return, realizedReturn: summary.baseline.realized_return },
+  esgAware: { weights: pick("w_esg_aware"), ...esgAwareSummary },
+  baseline: { weights: pick("w_baseline"), ...baselineSummary },
   qubo: { bitsPerAsset: params.qubo_bits_per_asset, numQubits: n, matrix: hasMatrix ? matrix : `${TODO} – ${n}×${n}, dán vào sheet QUBO_Matrix` },
 };
 
@@ -167,6 +255,10 @@ const privateSample = {
 };
 
 const methodology = {
+  financialEngineVersion: "1.0.0",
+  calculatedMetrics: ["CAPM expected return", "price-period realized return", "Altman Z X1-X5", "Altman zone", "RFin base"],
+  inputSource: "Financials and Market sheets in the configured workbook",
+  realizedReturnPeriod: "price_start_next to price_end_next; use only as the workbook's stated period, not a full historical series",
   riskFree: { value: params.rf, source: readTable(wb, "Params").find((r) => r.key === "rf").source },
   equityRiskPremium: { value: params.erp, source: readTable(wb, "Params").find((r) => r.key === "erp").source },
   capm: params.capm_formula,
@@ -177,12 +269,12 @@ const methodology = {
 };
 
 // Chỉ tiêu ESG công bố (sheet ESG_ChiTieu): Bool = có / không thực hành, Num = số liệu định lượng; ô trống = chưa công bố.
-const esgRows = readTable(wb, "ESG_ChiTieu");
-const esgTickers = Object.keys(esgRows[0] ?? {}).filter((k) => /^[A-Z]{2,4}$/.test(k));
+const esgRowsRaw = readTable(wb, "ESG_ChiTieu");
+const esgTickers = Object.keys(esgRowsRaw[0] ?? {}).filter((k) => /^[A-Z]{2,4}$/.test(k));
 const esgIndicators = {
   year: 2024,
   source: "Báo cáo phát triển bền vững / thường niên 2024 – AQ_Input.xlsx (sheet ESG)",
-  indicators: esgRows.map((r) => ({
+  indicators: esgRowsRaw.map((r) => ({
     code: r.code,
     pillar: r.code.slice(0, 1),
     name: r.name,
@@ -196,7 +288,7 @@ const esgIndicators = {
     ...(r.unit ? { unit: r.unit } : {}),
   })),
   values: Object.fromEntries(
-    esgTickers.map((t) => [t, Object.fromEntries(esgRows.map((r) => [r.code, typeof r[t] === "number" ? r[t] : null]))])
+    esgTickers.map((t) => [t, Object.fromEntries(esgRowsRaw.map((r) => [r.code, typeof r[t] === "number" ? r[t] : null]))])
   ),
 };
 
@@ -210,6 +302,7 @@ const files = {
   "private_sample.json": privateSample,
   "methodology.json": methodology,
   "esg_indicators.json": esgIndicators,
+  "universe_pending.json": pendingUniverse,
 };
 mkdirSync(OUT, { recursive: true });
 for (const [name, data] of Object.entries(files)) writeFileSync(join(OUT, name), JSON.stringify(data, null, 2) + "\n");

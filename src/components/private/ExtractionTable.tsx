@@ -23,10 +23,17 @@ export function ExtractionTable({ extraction }: { extraction: DocumentExtraction
         </span>
       </div>
 
+      {extraction.ai && <Alert className={extraction.ai.mode === "live" ? "border-primary/30 bg-primary/5" : ""}>
+        <AlertTitle>{extraction.ai.mode === "live" ? `AI Agent: ${extraction.ai.provider}/${extraction.ai.model}` : extraction.ai.mode === "skipped" ? "AI Agent chưa được bật" : "AI Agent chưa khả dụng"}</AlertTitle>
+        <AlertDescription>
+          {extraction.ai.mode === "live" ? `Luồng ${extraction.ai.workflow?.join(" → ")}; ${extraction.ai.validatedCount ?? 0}/${extraction.ai.proposalCount ?? 0} trích xuất có quote khớp văn bản nguồn.${extraction.ai.warning ? ` ${extraction.ai.warning}` : ""}` : extraction.ai.warning}
+        </AlertDescription>
+      </Alert>}
+
       {warnings.length > 0 && (
         <Alert className="border-risk-grey/40 bg-risk-grey/5">
           <AlertTriangle className="text-risk-grey" />
-          <AlertTitle>Cần kiểm tra lại</AlertTitle>
+          <AlertTitle>{extraction.ai?.mode === "live" ? "Cảnh báo parser Rules baseline" : "Cần kiểm tra lại (parser/OCR)"}</AlertTitle>
           <AlertDescription>
             <ul className="list-disc pl-4">
               {warnings.map((w) => (
@@ -44,8 +51,9 @@ export function ExtractionTable({ extraction }: { extraction: DocumentExtraction
               <TableHead>Chỉ tiêu</TableHead>
               <TableHead className="text-center">Mã số</TableHead>
               <TableHead className="text-right">Giá trị</TableHead>
+              <TableHead>Phương pháp</TableHead>
               <TableHead className="text-center">Trang</TableHead>
-              <TableHead>Dòng gốc trong báo cáo</TableHead>
+              <TableHead>Quote nguồn trong báo cáo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -55,7 +63,9 @@ export function ExtractionTable({ extraction }: { extraction: DocumentExtraction
                 <TableCell className="text-center font-mono">{f.code}</TableCell>
                 <TableCell className="text-right font-mono tabular">
                   {f.value === null ? <span className="text-risk-distress">Không tìm thấy</span> : formatNumber(f.value, 0)}
+                  {f.method === "llm" && f.rulesValue !== null && f.rulesValue !== undefined && f.rulesValue !== f.value && <span className="ml-1 text-[10px] text-amber-700" title={`Parser quy tắc: ${formatNumber(f.rulesValue, 0)}`}>≠ rules</span>}
                 </TableCell>
+                <TableCell title={f.method === "llm" ? "Confidence do model tự báo, không phải xác suất đã hiệu chuẩn" : "Parser xác định"}>{f.method === "llm" ? `LLM · tự chấm ${Math.round((f.confidence ?? 0) * 100)}%` : "Rules"}</TableCell>
                 <TableCell className="text-center">
                   {f.page ? (
                     <span className="inline-flex items-center gap-1" title={f.source === "ocr" ? "Nhận dạng ký tự (OCR)" : "Lớp chữ của PDF"}>

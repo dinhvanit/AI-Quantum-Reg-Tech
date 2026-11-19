@@ -10,10 +10,6 @@ import { getOverviews } from "@/lib/overview";
 import { getPortfolio } from "@/lib/api";
 import { formatNumber, formatPct } from "@/lib/format";
 
-const SOLVER_LABEL: Record<string, string> = {
-  "classical-cobyla": "Cổ điển (COBYLA)",
-};
-
 export default async function DashboardPage() {
   const [items, portfolio] = await Promise.all([getOverviews(), getPortfolio()]);
 
@@ -57,9 +53,9 @@ export default async function DashboardPage() {
           tone={distress.length > 0 ? "distress" : "safe"}
         />
         <StatCard
-          label="Lợi nhuận thực tế ESG-aware"
+          label="Return lịch sử ESG-aware (1 kỳ)"
           value={formatPct(portfolio.esgAware.realizedReturn)}
-          hint={`${realizedGap > 0 ? "+" : ""}${formatNumber(realizedGap * 100)} điểm % so với Baseline`}
+          hint={`${realizedGap > 0 ? "+" : ""}${formatNumber(realizedGap * 100)} điểm % so với Baseline · workbook`}
           icon={TrendingUp}
           tone="safe"
         />
@@ -69,10 +65,10 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard
           title="Phân bổ danh mục ESG-aware"
-          description={`Tỷ trọng tối ưu · ${formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ ${formatPct(portfolio.constraints.maxWeight, 0)}`}
+          description={`Tỷ trọng theo workbook · ${formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ ${formatPct(portfolio.constraints.maxWeight, 0)}`}
           action={
             <Badge variant="secondary" className="h-auto bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-              {SOLVER_LABEL[portfolio.solver] ?? portfolio.solver}
+              Kịch bản workbook
             </Badge>
           }
         >

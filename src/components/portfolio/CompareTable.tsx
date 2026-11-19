@@ -9,7 +9,7 @@ export function CompareTable({ portfolio, tickers }: { portfolio: PortfolioResul
   const rows = [
     ...tickers.map((t) => ({ label: `Tỷ trọng ${t}`, a: baseline.weights[t], b: esgAware.weights[t], digits: 1, highlight: false })),
     { label: "Lợi nhuận kỳ vọng", a: baseline.expectedReturn, b: esgAware.expectedReturn, digits: 2, highlight: false },
-    { label: "Lợi nhuận thực tế", a: baseline.realizedReturn, b: esgAware.realizedReturn, digits: 2, highlight: true },
+    { label: "Return lịch sử (một kỳ)", a: baseline.realizedReturn, b: esgAware.realizedReturn, digits: 2, highlight: true },
   ];
 
   return (
@@ -17,8 +17,8 @@ export function CompareTable({ portfolio, tickers }: { portfolio: PortfolioResul
       <TableHeader>
         <TableRow>
           <TableHead />
-          <TableHead className="text-right">Baseline (Markowitz)</TableHead>
-          <TableHead className="text-right text-primary">ESG-aware (RegTech)</TableHead>
+          <TableHead className="text-right">Baseline (Markowitz · workbook)</TableHead>
+          <TableHead className="text-right text-primary">ESG-aware · workbook</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

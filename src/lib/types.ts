@@ -135,6 +135,9 @@ export interface ExtractedField {
   source?: "text" | "ocr";
   /** Dòng gốc chứa số liệu – để người dùng đối chiếu. */
   line?: string;
+  method?: "rules" | "llm";
+  confidence?: number;
+  rulesValue?: number | null;
 }
 
 export interface DocumentExtraction {
@@ -146,9 +149,10 @@ export interface DocumentExtraction {
   unit?: string;
   fields: ExtractedField[];
   warnings: string[];
+  ai?: { mode: "live" | "unavailable" | "skipped"; provider?: string; model?: string; validatedCount?: number; proposalCount?: number; workflow?: string[]; warning?: string };
 }
 
-export type PrivateStage = "ocr" | "normalize" | "zscore" | "osint";
+export type PrivateStage = "ocr" | "normalize" | "ai" | "zscore" | "osint";
 
 /** Tham số chung – sheet Params (docs/DATA.md). */
 export interface Methodology {

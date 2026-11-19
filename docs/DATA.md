@@ -55,7 +55,7 @@ data/QuantumRegTech_Data.xlsx ──(npm run data · scripts/build-data.mjs)─�
 | | Baseline (Markowitz) | ESG-aware (RegTech AI-Quantum) |
 |---|---|---|
 | Lợi nhuận kỳ vọng | 9,31% | 8,50% |
-| Lợi nhuận thực tế | 11,86% | 15,96% |
+| Return lịch sử (một kỳ) | 11,86% | 15,96% |
 | Chênh lệch thực tế | | **+4,11 điểm % so với Baseline** |
 
 **Đối chiếu (đã kiểm tra):** Z tính lại từ BCTC 2024 (sheet `ZScore`) = 6,1797 · 6,5143 · 6,9009 · 1,7996 → làm tròn khớp Z công bố. Ri tính bằng CAPM và lợi nhuận thực tế tính từ giá 2025 khớp bảng trên. Trong Excel, Ri, lợi nhuận thực tế, X1–X5, Z, vùng và lợi nhuận danh mục là **công thức**, không nhập tay.
@@ -63,7 +63,7 @@ data/QuantumRegTech_Data.xlsx ──(npm run data · scripts/build-data.mjs)─�
 ### Lưu ý diễn giải (từ Phụ lục B)
 - **SAB:** Phụ lục B ghi "Lợi nhuận bù trừ điểm phạt Thuế" nhưng POSINT = 0. AQ_Input có sự kiện phạt thuế 2024 nhưng chưa có số QĐ/link → chưa đưa vào dữ liệu (mục 6).
 - **SBT:** diễn giải đúng là "Bị siết do Z = 1,80 (Distress) → RFin,Base = 0,70" (POSINT = 0).
-- **Backtest:** SBT ở mức 15% trong cả hai mô hình, phần vượt trội đến từ chuyển vốn SAB → VNM → nói "so với Baseline", không nói "so với thị trường chung".
+- **Return lịch sử:** SBT ở mức 15% trong cả hai mô hình, phần chênh lệch đến từ chuyển vốn SAB → VNM. Gọi đây là chênh lệch so với Baseline, không phải vượt thị trường chung. Hai mức giá nguồn hiện chưa có ngày cụ thể trong workbook/runtime nên không gọi đây là backtest rolling/out-of-sample.
 
 ## 3. Cấu trúc file Excel
 

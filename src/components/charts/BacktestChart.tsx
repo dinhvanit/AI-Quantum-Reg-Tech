@@ -4,11 +4,11 @@ import { Bar, BarChart, CartesianGrid, Legend, ReferenceLine, Tooltip, XAxis, YA
 import { formatPct } from "@/lib/format";
 import type { PortfolioResult } from "@/lib/types";
 
-/** So sánh Baseline vs ESG-aware: lợi nhuận kỳ vọng & thực tế (1 trục, cùng đơn vị %). */
+/** So sánh CAPM expectation và một kỳ giá lịch sử; không đại diện rolling/out-of-sample backtest. */
 export function BacktestChart({ portfolio }: { portfolio: Pick<PortfolioResult, "baseline" | "esgAware"> }) {
   const data = [
     { name: "Lợi nhuận kỳ vọng", baseline: portfolio.baseline.expectedReturn, esg: portfolio.esgAware.expectedReturn },
-    { name: "Lợi nhuận thực tế", baseline: portfolio.baseline.realizedReturn, esg: portfolio.esgAware.realizedReturn },
+    { name: "Return lịch sử (1 kỳ)", baseline: portfolio.baseline.realizedReturn, esg: portfolio.esgAware.realizedReturn },
   ];
 
   return (
@@ -41,9 +41,9 @@ export function BacktestChart({ portfolio }: { portfolio: Pick<PortfolioResult, 
           }
         />
         <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-        <Bar dataKey="baseline" name="Baseline (Markowitz)" fill="var(--chart-5)" radius={[4, 4, 0, 0]} maxBarSize={48}
+        <Bar dataKey="baseline" name="Baseline · workbook" fill="var(--chart-5)" radius={[4, 4, 0, 0]} maxBarSize={48}
           label={{ position: "top", fontSize: 10, fill: "var(--muted-foreground)", formatter: (v: unknown) => formatPct(v as number) }} />
-        <Bar dataKey="esg" name="ESG-aware" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={48}
+        <Bar dataKey="esg" name="ESG-aware · workbook" fill="var(--primary)" radius={[4, 4, 0, 0]} maxBarSize={48}
           label={{ position: "top", fontSize: 10, fill: "var(--foreground)", formatter: (v: unknown) => formatPct(v as number) }} />
       </BarChart>
     </div>

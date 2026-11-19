@@ -48,7 +48,7 @@ export function WeightSliders() {
       ))}
 
       <div className="space-y-2 border-t pt-4">
-        <Label className="text-xs font-medium">Bộ giải (solver)</Label>
+        <Label className="text-xs font-medium">Bộ giải ghi trong workbook (chưa chạy)</Label>
         <Select items={SOLVERS} value={solver} onValueChange={(v) => v && setSolver(v as Solver)}>
           <SelectTrigger className="w-full">
             <SelectValue />
@@ -61,6 +61,7 @@ export function WeightSliders() {
             ))}
           </SelectContent>
         </Select>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">COBYLA chưa được gọi từ giao diện; QAOA chưa khả dụng. Thay đổi slider chỉ chọn scenario có sẵn.</p>
       </div>
 
       <Button variant="ghost" size="sm" onClick={resetParams} className="w-full">

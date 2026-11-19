@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Target, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AllocationDonut } from "@/components/charts/AllocationDonut";
@@ -30,10 +31,22 @@ export function PortfolioOptimizer({
 }) {
   const params = usePortfolioStore((s) => s.params);
   const watchlist = usePortfolioStore((s) => s.watchlist);
-  const companies = items.map((i) => i.company);
+  const selectedTickers = usePortfolioStore((s) => s.selectedTickers);
+  const [capital, setCapital] = useState(portfolio.capital);
+  const activeItems = useMemo(
+    () => selectedTickers.length ? items.filter((i) => selectedTickers.includes(i.company.ticker)) : items,
+    [items, selectedTickers],
+  );
+  const companies = useMemo(() => activeItems.map((i) => i.company), [activeItems]);
 
   const scenario = useMemo(() => nearestScenario(scenarios, params), [scenarios, params]);
-  const weights = scenario?.weights ?? portfolio.esgAware.weights;
+  const rawWeights = scenario?.weights ?? portfolio.esgAware.weights;
+  const weights = useMemo(() => {
+    const activeTotal = activeItems.reduce((sum, i) => sum + Math.max(0, rawWeights[i.company.ticker] ?? 0), 0);
+    return activeTotal > 0
+      ? Object.fromEntries(activeItems.map((i) => [i.company.ticker, Math.max(0, rawWeights[i.company.ticker] ?? 0) / activeTotal]))
+      : Object.fromEntries(activeItems.map((i) => [i.company.ticker, 1 / Math.max(1, activeItems.length)]));
+  }, [activeItems, rawWeights]);
 
   // Skeleton 600ms mỗi khi kịch bản thay đổi (UI_DESIGN §4.4).
   const [shown, setShown] = useState(weights);
@@ -47,6 +60,8 @@ export function PortfolioOptimizer({
   const expected = portfolioReturn(shown, companies, "expectedReturn");
   const realized = portfolioReturn(shown, companies, "realizedReturn");
   const { minWeight, maxWeight } = portfolio.constraints;
+  const scenarioGaps = activeItems.filter((item) => !(item.company.ticker in rawWeights)).map((item) => item.company.ticker);
+  const infeasibleSelection = activeItems.length > 0 && (activeItems.length * minWeight > 1 || activeItems.length * maxWeight < 1);
 
   return (
     <Tabs defaultValue="classic" className="gap-4">
@@ -57,7 +72,7 @@ export function PortfolioOptimizer({
 
       <TabsContent value="classic" className="space-y-4">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_1fr]">
-          <DashboardCard title="Tham số mô hình" description="Kéo slider để chọn kịch bản tính sẵn gần nhất">
+          <DashboardCard title="Tham số mô hình" description="Chọn kịch bản workbook gần nhất; hiện có 2 kịch bản, chưa chạy optimizer mới">
             <WeightSliders />
           </DashboardCard>
 
@@ -68,7 +83,7 @@ export function PortfolioOptimizer({
               {[
                 `${formatPct(minWeight, 0)} ≤ wᵢ ≤ ${formatPct(maxWeight, 0)}`,
                 "Σwᵢ = 100%",
-                `Vốn: ${formatBillion(portfolio.capital, 0)} VNĐ`,
+                `Vốn: ${formatBillion(capital, 0)} VNĐ`,
               ].map((c) => (
                 <Badge key={c} variant="outline" className="h-auto px-2.5 py-1 font-mono text-[11px]">
                   {c}
@@ -82,6 +97,9 @@ export function PortfolioOptimizer({
               )}
             </div>
 
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">Bộ mã trong kịch bản: {activeItems.map((i) => i.company.ticker).join(", ")}</p>
+            {scenarioGaps.length > 0 && <Alert><AlertDescription>Chưa có trọng số/kịch bản cho {scenarioGaps.join(", ")}. Các mã này chưa thể tham gia phân bổ từ dữ liệu hiện tại.</AlertDescription></Alert>}
+            {infeasibleSelection && <Alert variant="destructive"><AlertDescription>Số mã đã chọn không khả thi với ràng buộc hiện tại {formatPct(minWeight, 0)}–{formatPct(maxWeight, 0)} mỗi mã. Cần cấu hình giới hạn phù hợp trước khi chạy solver.</AlertDescription></Alert>}
             {watchlist.length > 0 && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Eye className="size-3.5" /> Đang theo dõi từ Cổng 1: {watchlist.join(", ")}
@@ -91,15 +109,17 @@ export function PortfolioOptimizer({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <StatCard label="Lợi nhuận kỳ vọng" value={loading ? "…" : formatPct(expected)} icon={Target} hint="Σ wᵢ × Rᵢ (CAPM)" />
               <StatCard
-                label="Lợi nhuận thực tế (backtest)"
+                label="Lợi nhuận lịch sử (một kỳ)"
                 value={loading ? "…" : formatPct(realized)}
                 icon={TrendingUp}
                 tone="safe"
-                hint="Σ wᵢ × lợi nhuận thực tế"
+                hint="Σ wᵢ × (P cuối / P đầu − 1); workbook chưa kèm ngày giá"
               />
             </div>
 
-            <DashboardCard title="Kết quả phân bổ" description="Tỷ trọng tối ưu wᵢ* và số tiền phân bổ">
+            <label className="flex max-w-sm items-center gap-3 text-xs"><span className="shrink-0 text-muted-foreground">Tổng vốn (tỷ VNĐ)</span><input type="number" min={1} step={10} value={capital / 1_000_000_000} onChange={(event) => setCapital(Math.max(1, Number(event.target.value) || 1) * 1_000_000_000)} className="h-8 w-36 rounded-md border bg-background px-2 font-mono"/></label>
+
+            <DashboardCard title="Kết quả phân bổ" description="Tỷ trọng kịch bản đang chọn và số tiền phân bổ">
               {loading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-40" />
@@ -108,14 +128,14 @@ export function PortfolioOptimizer({
               ) : (
                 <div className="space-y-4">
                   <AllocationDonut
-                    data={items.map(({ company: { ticker } }) => ({
+                    data={activeItems.map(({ company: { ticker } }) => ({
                       ticker,
                       weight: shown[ticker] ?? 0,
                       baselineWeight: portfolio.baseline.weights[ticker],
                     }))}
-                    capital={portfolio.capital}
+                    capital={capital}
                   />
-                  <WeightTable items={items} weights={shown} capital={portfolio.capital} />
+                  <WeightTable items={activeItems} weights={shown} capital={capital} />
                 </div>
               )}
             </DashboardCard>
@@ -123,10 +143,13 @@ export function PortfolioOptimizer({
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <DashboardCard title="So sánh Baseline vs ESG-aware" description="Kết quả đã kiểm tra lại bằng tính toán">
+          <DashboardCard title="So sánh Baseline vs ESG-aware" description="Trọng số lấy từ workbook; return lịch sử là một kỳ giá">
             <CompareTable portfolio={portfolio} tickers={companies.map((c) => c.ticker)} />
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              Trọng số Baseline và ESG-aware lấy từ workbook; build script tính lại return có trọng số và đối chiếu với summary workbook. Giao diện không chạy lại Markowitz/COBYLA. Return lịch sử tính bằng P cuối / P đầu − 1, nhưng dữ liệu đang thiếu ngày đầu/cuối nên chưa xác nhận được độ dài kỳ và chưa phải backtest rolling/out-of-sample. Chưa tính phí giao dịch hoặc benchmark thị trường.
+            </p>
           </DashboardCard>
-          <DashboardCard title="Backtest" description="Lợi nhuận kỳ vọng và thực tế của hai mô hình">
+          <DashboardCard title="Đối chiếu lợi nhuận" description="CAPM kỳ vọng và return lịch sử một kỳ của hai bộ trọng số">
             <BacktestChart portfolio={portfolio} />
           </DashboardCard>
         </div>
