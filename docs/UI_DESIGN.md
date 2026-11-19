@@ -1,5 +1,7 @@
 # UI Design – QuantumRegTech MVP
 
+> Tài liệu UI gốc. Dùng cùng [Spec Kit feature spec](../specs/001-investor-due-diligence-demo/spec.md), [architecture plan](../specs/001-investor-due-diligence-demo/plan.md), [financial engine](FINANCIAL_ENGINE.md) và [demo status](DEMO_STATUS.md). Những trạng thái triển khai trong nội dung cũ là ảnh chụp lịch sử; không dùng các tuyên bố Zero-Retention cũ làm cam kết hiện tại.
+
 ## 1. Định hướng thiết kế
 
 - **Cảm giác:** công cụ thẩm định chuyên nghiệp cho ngân hàng/quỹ – nghiêm túc, đáng tin, nhiều dữ liệu nhưng dễ đọc.
@@ -70,7 +72,7 @@ Vùng Altman Z' (DN chưa niêm yết – Cổng 2, theo Altman 1983): **Safe > 
 ```
 - Sidebar rộng 240px, thu gọn còn icon ở < 1024px, thành drawer ở mobile.
 - Sidebar không còn badge "Dữ liệu mẫu – PoC" (đã bỏ theo yêu cầu); nhãn này chỉ còn trên trang báo cáo thẩm định (bản in).
-- Đã triển khai (`components/layout`): Sidebar 5 mục (Tổng quan `/`, Tra cứu `/company/VNM`, Nạp DL bảo mật `/private`, Danh mục `/portfolio`, Báo cáo `/report/VNM`), mục đang mở có nền `sidebar-accent` + chấm tròn. Header gồm tên trang + ngày, badge Cổng 2 (trang `/private`; Cổng 1 đặt trong header DN của trang), ô tìm mã CP. ⏳ Drawer mobile chưa làm.
+- Đã triển khai (`components/layout`): Sidebar gồm Tổng quan `/`, Tra cứu `/company/VNM` (hồ sơ có thể chuyển mã nhanh), Danh sách mã `/stocks`, Nạp DL bảo mật `/private`, Danh mục `/portfolio`, Báo cáo `/report/VNM`. Header có tên trang + ngày, badge Cổng 2 và ô tìm mã. ⏳ Drawer mobile chưa làm.
 - Khi in (`@media print`) sidebar và header bị ẩn.
 
 ## 4. Đặc tả màn hình
@@ -110,7 +112,7 @@ Các khu vực trong bảng dưới **chưa** có ở bản hiện tại: ⏳ L�
 | CTA | "Thêm vào danh mục" · "Xuất báo cáo thẩm định" | |
 
 Ghi chú triển khai:
-- Thanh chọn nhanh 4 mã ở đầu trang; ô tìm mã CP trên Header chuyển tới `/company/{MÃ}`; mã không tồn tại → trang 404 tiếng Việt.
+- Thanh chọn nhanh mã ở đầu trang được tạo từ universe; ô tìm mã CP trên Header chuyển tới `/company/{MÃ}`; mã không tồn tại → trang 404 tiếng Việt.
 - Bảng X1–X5 có số thật (tính từ BCTC 2024 trong file Excel).
 - Thẻ **Điểm ESG**: ESGi (Phụ lục B) + `EsgDisclosure` – mỗi trụ cột E / S / G có 2 thanh: *Thực hành áp dụng* (chỉ tiêu có / không đang = Có) và *Số liệu định lượng* (đã công bố), nhãn "x/y" luôn hiển thị, vạch đen = trung bình 4 DN; tab "Chỉ tiêu E / S / G" liệt kê từng chỉ tiêu: giá trị thật (Có / Không / số + đơn vị / "Chưa công bố") và hạng trong 4 DN theo chiều tốt (↑ cao hơn là tốt, ↓ thấp hơn là tốt). Chỉ tiêu số tuyệt đối phụ thuộc quy mô (tổng phát thải, nước, năng lượng, ngân sách xã hội, số nhân viên) **không xếp hạng** để tránh "DN nhỏ = phát thải ít = tốt"; chỉ tiêu bị loại khỏi chấm điểm gắn nhãn "Tham khảo". Ghi rõ "đây là mức độ công bố, không phải điểm ESG". `EsgRadar` chỉ hiện khi sheet `ESG` có đủ điểm trụ cột.
 - Badge rủi ro tẩy xanh khi chưa có dữ liệu: "Rủi ro tẩy xanh: chưa đánh giá" (thay cho "—").
@@ -121,13 +123,13 @@ Ghi chú triển khai:
 Luồng 4 bước (stepper, component `UploadStepper`, trạng thái `idle → processing → done → deleted`):
 1. **Tải lên** – dropzone kéo-thả / bấm chọn (PDF, XLSX, XLS; tối đa 20 MB; báo lỗi ngay khi sai định dạng / quá lớn / tệp rỗng) + checkbox cam kết bảo mật. Nút "Bắt đầu phân tích" chỉ bật khi có tệp **và** đã tick.
 2. **Xử lý** – 4 bước `Đọc tài liệu / OCR → Chuẩn hoá chỉ tiêu → Tính Z'-Score → Quét OSINT`, mỗi bước có trạng thái Chờ / Đang chạy / Hoàn tất và dòng tiến độ chi tiết ("Trang 2/2: nhận dạng ký tự (OCR)…"). Nút **"Huỷ & xoá tệp"** dừng (AbortController) và quay về bước 1.
-   - **PDF – xử lý thật, ngay trong trình duyệt:** trang có lớp chữ → đọc bằng pdf.js; trang ảnh scan → render ~200 dpi, xoá đường kẻ bảng, OCR bằng Tesseract (tiếng Việt, mô hình tự host trong `public/vendor`). Tìm 9 chỉ tiêu theo **mã số** mẫu B01-DN/B02-DN + tên chỉ tiêu không dấu (chịu được lỗi dấu OCR, tên chỉ tiêu xuống dòng, dấu phân cách lệch) → tính Z'. Quét OSINT chưa kết nối (Vòng 2). PDF tối đa 12 trang đầu. BCTC 2 trang: PDF chữ ≈ 1–2 giây, PDF scan ≈ 5–7 giây.
+   - **PDF – OCR/parser + AI Agent opt-in:** trang có lớp chữ → đọc bằng pdf.js; trang scan → OCR bằng Tesseract tiếng Việt. Parser theo mã số/tên nhãn là baseline; nếu người dùng đồng ý riêng, LangGraph + LangChain LLM trích xuất theo schema 9 trường và quote validation để đọc nhãn không theo một template cứng. Chỉ trường có quote/trang khớp mới được dùng tính Z'. PDF tối đa 12 trang đầu. Quét OSINT/ESG nội bộ chưa kết nối ở cổng này.
    - **Excel:** chưa hỗ trợ trích xuất → 4 bước giả lập rồi trả kết quả mẫu (sheet `Private_Sample`).
    - Lỗi: PDF hỏng → "Tệp PDF bị hỏng hoặc không hợp lệ."; PDF có mật khẩu → yêu cầu gỡ mật khẩu.
 3. **Kết quả** – thẻ **"Chỉ tiêu trích xuất từ báo cáo"** (`ExtractionTable`): 9 chỉ tiêu, mã số, giá trị, trang, cách đọc (lớp chữ / OCR), **dòng gốc** để đối chiếu; cảnh báo khi thiếu chỉ tiêu, khi Tổng tài sản ≠ Nợ phải trả + VCSH (lệch > 1%), hoặc khi số có thể bị đọc sai cột. Sau đó tái dùng component Cổng 1 (`ZScoreGauge` mô hình Z', `XTable`, `EsgRadar`, `OsintTimeline`, `RiskFormula`). Ngay khi xử lý xong, tham chiếu tệp gốc, ảnh trang, worker pdf.js/Tesseract đều bị huỷ; chỉ giữ tên + dung lượng để ghi nhật ký. Nút "Xác nhận xoá dữ liệu gốc" → bước 4.
-4. **Xoá dữ liệu** – banner `Zero-Retention: tệp gốc đã được xoá lúc HH:mm:ss` (giờ lấy từ `deletedAt` do API trả) + tên/dung lượng tệp; nút "Tải báo cáo (PDF)" (`window.print()`, ẩn stepper khi in) và "Phân tích hồ sơ khác".
+4. **Kết thúc phiên** – UI cho biết ứng dụng đã bỏ tham chiếu tệp khỏi phiên; không tuyên bố xóa khỏi browser memory, logs, caches hoặc hạ tầng. Có thể in báo cáo và xử lý hồ sơ khác.
 
-Phía trên stepper có 3 thẻ nguyên tắc: *Xử lý trong phiên* (đọc PDF + OCR chạy trên trình duyệt, tệp không gửi lên máy chủ – e2e test kiểm tra không có request ra ngoài; Vòng 2: TLS tới API), *Zero-Retention*, *Không chia sẻ* (kết quả không vào dữ liệu công khai Cổng 1). Badge "Cổng 2 · Bảo mật" nằm trên Header.
+Phía trên stepper có 3 thẻ nguyên tắc: PDF/OCR cục bộ, dọn tham chiếu file khỏi phiên, không ghi kết quả vào Cổng 1. Checkbox LLM riêng cảnh báo rằng text trích xuất sẽ rời trình duyệt tới provider; PDF gốc không gửi. Không gọi đây là Zero-Retention toàn hệ thống. Badge "Cổng 2 · Bảo mật" nằm trên Header.
 
 **Tệp thử:** `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ) và `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (chỉ ảnh → OCR) – BCTC của **doanh nghiệp giả định** "CTCP Thực phẩm Mẫu QRT", đáp án ở `bctc-mau-qrt-2024.expected.json` (Z' ≈ 2,52 → Grey). Tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
@@ -141,20 +143,20 @@ Phía trên stepper có 3 thẻ nguyên tắc: *Xử lý trong phiên* (đọc P
 | Tham số | 4 `Slider` α (lợi nhuận), β (rủi ro biến động), γ (ESG), δ (phạt rủi ro) + chọn solver: `Cổ điển (COBYLA)` / `Lượng tử (QAOA) – sắp có` (disabled) |
 | Ràng buộc | Chip: `15% ≤ wᵢ ≤ 55%`, `Σwᵢ = 100%`, `Vốn: 100 tỷ VNĐ` |
 | Kết quả | `AllocationDonut` + `WeightTable` (Ri, RFin,Total, ESGi, wᵢ*, số tiền) |
-| So sánh | `CompareTable` Baseline vs ESG-aware: tỷ trọng, lợi nhuận kỳ vọng, lợi nhuận thực tế; `BacktestChart` bar |
+| So sánh | `CompareTable` trọng số workbook Baseline vs ESG-aware: tỷ trọng, CAPM kỳ vọng, return lịch sử một kỳ; `BacktestChart` bar |
 | Tab "Lõi Lượng tử" | `QuboHeatmap` ma trận Q, thẻ thông số: số qubit, bit rời rạc/tài sản, độ sâu mạch dự kiến – nhãn "Mô phỏng / Vòng 2" |
 
 Khi kéo slider: dùng kịch bản tính sẵn gần nhất trong `scenarios.json` (khoảng cách Euclid trên α β γ δ – `nearestScenario()`; hoặc gọi FastAPI nếu có); hiển thị skeleton 600ms.
 
 Ghi chú triển khai:
 - Slider mặc định α = β = γ = δ = 1 (kịch bản ESG-aware). `scenarios.json` hiện có 2 kịch bản (γ = δ = 0 → Baseline; γ = δ = 1 → ESG-aware) – cần thêm kịch bản từ code Python để slider "mượt" hơn.
-- 2 thẻ KPI "Lợi nhuận kỳ vọng" / "Lợi nhuận thực tế" tính Σ wᵢ × Rᵢ theo kịch bản đang chọn (khớp bảng kết quả Phụ lục B – có unit test).
+- 2 thẻ KPI tính Σ wᵢ × CAPM và Σ wᵢ × return từ hai mốc giá theo kịch bản đang chọn. Build script tính/đối chiếu hai portfolio summary workbook. Portfolio table có hai scenario workbook; slider không chạy solver mới. Mốc ngày cho giá đầu/cuối hiện thiếu nên không gọi kết quả là rolling/out-of-sample backtest.
 - Tab "Lõi Lượng tử": số qubit 16, bit/tài sản 4, độ sâu mạch "—"; `QuboHeatmap` hiện trạng thái rỗng vì `qubo.matrix` = TODO.
 
 ### 4.5 Báo cáo thẩm định – `/report/[ticker]` ✅
 - Khổ A4 dọc, lề 20mm, ẩn sidebar/header khi in (`@media print`).
 - Mục: Thông tin DN → Kết luận tổng (1 đoạn + badge) → Z-Score → ESG & Tẩy xanh → OSINT → Khuyến nghị tỷ trọng → Phương pháp & nguồn dữ liệu → Tuyên bố miễn trừ.
-- Nút "In / Lưu PDF" gọi `window.print()`; thanh chuyển nhanh 4 mã ở trên (ẩn khi in). Bản in hiện tại gọn trong 2 trang A4.
+- Nút "In / Lưu PDF" gọi `window.print()`; thanh chuyển nhanh mã lấy từ universe (ẩn khi in). Bản in hiện tại gọn trong 2 trang A4.
 - **Kết luận tổng** sinh tự động từ số liệu (`lib/assessment.ts`), quy tắc hiển thị *cần nhóm tài chính duyệt*:
   - **Rủi ro cao**: vùng Distress hoặc RFin,Total ≥ 0,5 (vd. SBT)
   - **Cần theo dõi**: có sự kiện OSINT đang hiệu lực hoặc rủi ro tẩy xanh cao (vd. MCM)
@@ -162,23 +164,31 @@ Ghi chú triển khai:
 - Mục "Phương pháp & nguồn dữ liệu" đọc từ sheet `Params` (→ `methodology.json`) qua `getMethodology()`.
 - Mục 3 hiển thị X1–X5 tính từ BCTC 2024 (sheet `ZScore`).
 
+### 4.6 Danh sách cổ phiếu – `/stocks`
+
+- Danh sách được dựng từ universe dữ liệu, có tìm kiếm theo mã/tên/ngành/sàn và lựa chọn mã cho Portfolio.
+- `VNM/SAB/MCM/SBT` là preset để tái hiện demo hiện tại, không phải giới hạn số mã của hệ thống.
+- Workbook hiện sinh bốn hồ sơ đầy đủ; mã khác chỉ được đưa vào sau khi nhập dữ liệu nguồn và trạng thái completeness. Không tạo metric từ ticker trống.
+- Chọn mã rồi mở Portfolio; cảnh báo khi mã thiếu scenario/solver input hoặc ràng buộc tỷ trọng không khả thi.
+- OSINT scan nằm trong hồ sơ từng doanh nghiệp `/company/[ticker]`, không tạo trang phân tích 4 mã riêng.
+
 ## 5. User journey demo (≈ 3 phút)
 
 ```
-Dashboard ──► thấy MCM có cảnh báo OSINT, SBT ở vùng Distress
+Dashboard ──► xem tình hình bộ dữ liệu demo
    │
    ▼
-Cổng 1: /company/MCM ──► Bằng chứng tẩy xanh + báo chí phản ánh ô nhiễm 2022 (POSINT +0,10)
+Danh sách: /stocks ──► tìm trong universe, chọn preset demo hoặc mã khác đã có dữ liệu
    │
    ▼
-Cổng 1: /company/SBT ──► Z = 1,80 (Distress) → RFin,Total = 0,70
+Cổng 1: /company/[ticker] ──► xem risk/ESG và nguồn; chạy OSINT demo hoặc live, rà soát candidate
    │
    ▼
 /portfolio ──► kéo γ, δ về 0 → kịch bản Baseline (SAB 55%) ; kéo γ, δ lên → ESG-aware (VNM 50,9%, SBT ở sàn 15%)
            → so sánh Baseline (11,86%) vs ESG-aware (15,96%) → mở tab "Lõi Lượng tử" (Mô phỏng / Vòng 2)
    │
    ▼
-Cổng 2: /private ──► upload hồ sơ DN tư nhân → kết quả → Zero-Retention
+Cổng 2: /private ──► upload PDF → OCR/parser cục bộ → [opt-in] LLM extract → quote validation → rà soát chỉ số (chưa có RAG)
    │
    ▼
 /report/VNM ──► In PDF

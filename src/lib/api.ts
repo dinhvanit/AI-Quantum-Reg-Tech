@@ -12,6 +12,7 @@ import type {
   Company,
   Esg,
   EsgIndicatorSet,
+  ExtractedField,
   Methodology,
   OsintEvent,
   PortfolioResult,
@@ -34,7 +35,8 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function getCompanies(): Promise<Company[]> {
   if (USE_MOCK) { await delay(300); return companies as Company[]; }
-  return getJson("/api/v1/companies");
+  const page = await getJson<{ companies: Company[] }>("/api/v1/companies?limit=200");
+  return page.companies;
 }
 
 export async function getCompany(ticker: Ticker): Promise<Company | undefined> {
@@ -80,12 +82,13 @@ export async function getMethodology(): Promise<Methodology> {
 /** Kịch bản tham số tính sẵn cho slider (chỉ có ở chế độ mock). */
 export async function getScenarios(): Promise<Scenario[]> {
   if (USE_MOCK) { await delay(200); return scenarios as Scenario[]; }
-  return [];
+  return getJson("/api/v1/scenarios");
 }
 
 export const PRIVATE_STAGES: { id: PrivateStage; label: string }[] = [
   { id: "ocr", label: "Đọc tài liệu / OCR" },
   { id: "normalize", label: "Chuẩn hoá chỉ tiêu" },
+  { id: "ai", label: "LLM Agent (nếu được cấp phép)" },
   { id: "zscore", label: "Tính Z'-Score" },
   { id: "osint", label: "Quét OSINT" },
 ];
@@ -97,7 +100,7 @@ const aborted = (signal?: AbortSignal) => {
 
 /**
  * Cổng 2 – phân tích hồ sơ DN chưa niêm yết.
- * Không có backend (mặc định): xử lý NGAY TRONG TRÌNH DUYỆT, tệp không rời khỏi máy người dùng.
+ * PDF gốc luôn đọc/OCR trong trình duyệt. Phần text chỉ gửi tới LLM nếu người dùng bật useLlm riêng.
  * - PDF: đọc lớp chữ / OCR trang scan → trích 9 chỉ tiêu BCTC → tính Z'. OSINT, ESG chưa tự động (Vòng 2).
  * - Excel: chưa hỗ trợ trích xuất → trả kết quả mẫu (sheet Private_Sample).
  */
@@ -107,15 +110,10 @@ export async function analyzePrivate(
     onStage,
     onProgress,
     signal,
-  }: { onStage?: (stage: PrivateStage) => void; onProgress?: (message: string) => void; signal?: AbortSignal } = {}
+    useLlm = false,
+  }: { onStage?: (stage: PrivateStage) => void; onProgress?: (message: string) => void; signal?: AbortSignal; useLlm?: boolean } = {}
 ): Promise<PrivateAnalysis> {
-  if (!USE_MOCK) {
-    const body = new FormData();
-    body.append("file", file);
-    onStage?.("ocr");
-    return getJson("/api/v1/private/analyze", { method: "POST", body, signal });
-  }
-
+  // PDF bytes stay in the browser; only consented OCR/text lines may be sent for LLM extraction.
   if (isPdf(file)) {
     // Import động: pdf.js / Tesseract chỉ tải về trình duyệt khi thật sự phân tích PDF.
     const [{ extractPdfLines }, { parseFinancials }, { computeZPrime }] = await Promise.all([
@@ -128,14 +126,59 @@ export async function analyzePrivate(
     aborted(signal);
 
     onStage?.("normalize");
-    onProgress?.("Tìm 9 chỉ tiêu theo mã số mẫu B01-DN, B02-DN…");
+    onProgress?.("Đọc nhãn báo cáo và đối chiếu quy tắc tài chính…");
     const parsed = parseFinancials(pdf.lines);
     await delay(300);
     aborted(signal);
 
+    let fields: ExtractedField[] = parsed.fields.map((field) => ({ ...field, method: "rules" }));
+    let ai: NonNullable<NonNullable<PrivateAnalysis["extraction"]>["ai"]> = {
+      mode: "skipped", warning: "Chưa bật gửi văn bản trích xuất tới LLM; chỉ dùng OCR và parser cục bộ.",
+    };
+    if (useLlm) {
+      onStage?.("ai");
+      onProgress?.("LangGraph: trích xuất 9 chỉ tiêu → kiểm tra quote và trang nguồn…");
+      try {
+        const requestLines: Array<{ page: number; text: string; source: "text" | "ocr" }> = [];
+        let requestChars = 0;
+        for (const line of pdf.lines.slice(0, 500)) {
+          const text = line.text.slice(0, 1000);
+          if (requestChars + text.length > 150_000) break;
+          requestLines.push({ ...line, text });
+          requestChars += text.length;
+        }
+        const response = await fetch("/api/private/extract", {
+          method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify({ lines: requestLines }), cache: "no-store", signal,
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail ?? "LLM extraction không khả dụng.");
+        ai = {
+          mode: payload.mode === "live" ? "live" : "unavailable",
+          provider: payload.provider, model: payload.model,
+          validatedCount: payload.validated_count ?? 0, proposalCount: payload.proposal_count ?? 0,
+          workflow: payload.workflow, warning: payload.warning,
+        };
+        if (payload.mode === "live") {
+          const proposals = new Map((payload.fields ?? []).map((field: { key: string; value: number | null; page?: number; source?: "text" | "ocr"; line?: string; confidence?: number; verified?: boolean }) => [field.key, field]));
+          fields = fields.map((field) => {
+            const proposal = proposals.get(field.key) as { value: number | null; page?: number; source?: "text" | "ocr"; line?: string; confidence?: number; verified?: boolean } | undefined;
+            if (!proposal?.verified || proposal.value === null || !Number.isFinite(proposal.value)) return field;
+            return { ...field, value: proposal.value, page: proposal.page, source: proposal.source, line: proposal.line, method: "llm" as const, confidence: proposal.confidence, rulesValue: field.value };
+          });
+          const conflicts = fields.filter((field) => field.method === "llm" && field.rulesValue !== null && field.rulesValue !== field.value).length;
+          if (conflicts) ai.warning = `${conflicts} chỉ tiêu khác parser quy tắc; cần đối chiếu ảnh/PDF gốc.`;
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError") throw error;
+        ai = { mode: "unavailable", warning: error instanceof Error ? error.message : "Không gọi được LLM; giữ kết quả parser cục bộ." };
+      }
+      aborted(signal);
+    }
+
     onStage?.("zscore");
     onProgress?.("Tính X1–X5 và Altman Z'…");
-    const zscore = computeZPrime(parsed.fields);
+    const zscore = computeZPrime(fields);
     await delay(300);
     aborted(signal);
 
@@ -163,8 +206,9 @@ export async function analyzePrivate(
         processedPages: pdf.processedPages,
         ocrPages: pdf.ocrPages,
         unit: parsed.unit,
-        fields: parsed.fields,
+        fields,
         warnings: parsed.warnings,
+        ai,
       },
       deletedAt: new Date().toISOString(),
     };

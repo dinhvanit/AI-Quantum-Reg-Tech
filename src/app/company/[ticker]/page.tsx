@@ -9,6 +9,7 @@ import { CompanyActions } from "@/components/company/CompanyActions";
 import { EsgDisclosure } from "@/components/company/EsgDisclosure";
 import { GreenwashingEvidence } from "@/components/company/GreenwashingEvidence";
 import { OsintTimeline } from "@/components/company/OsintTimeline";
+import { OsintScanner } from "@/components/company/OsintScanner";
 import { RiskFormula } from "@/components/company/RiskFormula";
 import { XTable } from "@/components/company/XTable";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -161,6 +162,10 @@ export default async function CompanyPage(props: PageProps<"/company/[ticker]">)
           </div>
         </DashboardCard>
       </div>
+
+      <DashboardCard title="Quét OSINT" description="Thu thập candidate mới cho doanh nghiệp này; chỉ bằng chứng được reviewer duyệt mới đủ điều kiện thay đổi POSINT.">
+        <OsintScanner ticker={company.ticker} posint={posint} rfinTotal={rfinTotal} existingUrls={allEvents.map((event) => event.url)} />
+      </DashboardCard>
     </div>
   );
 }

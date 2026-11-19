@@ -20,35 +20,34 @@ const STEP_INDEX: Record<Status, number> = { idle: 0, processing: 1, done: 2, de
 /** Luồng Cổng 2: idle → processing → done → deleted. */
 export function UploadStepper() {
   const [status, setStatus] = useState<Status>("idle");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [consent, setConsent] = useState(false);
+  const [llmConsent, setLlmConsent] = useState(false);
   const [stage, setStage] = useState<PrivateStage | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
-  const [result, setResult] = useState<PrivateAnalysis | null>(null);
+  const [results, setResults] = useState<PrivateAnalysis[]>([]);
   // Chỉ giữ metadata để hiển thị nhật ký xoá – nội dung tệp bị bỏ ngay sau khi xử lý.
-  const [fileMeta, setFileMeta] = useState<{ name: string; size: number } | null>(null);
+  const [fileMeta, setFileMeta] = useState<Array<{ name: string; size: number }> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   async function start() {
-    if (!file || !consent) return;
+    if (!files.length || !consent) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    setFileMeta({ name: file.name, size: file.size });
+    setFileMeta(files.map((file) => ({ name: file.name, size: file.size })));
     setStatus("processing");
     try {
-      const res = await analyzePrivate(file, {
-        onStage: (s) => {
-          setStage(s);
-          setProgress(null);
-        },
-        onProgress: setProgress,
-        signal: controller.signal,
-      });
-      setResult(res);
-      setFile(null); // Zero-Retention: bỏ tham chiếu tệp gốc
+      const extracted: PrivateAnalysis[] = [];
+      for (const file of files) {
+        setProgress(`Đang xử lý ${file.name} (${extracted.length + 1}/${files.length})`);
+        const res = await analyzePrivate(file, { onStage: setStage, onProgress: setProgress, signal: controller.signal, useLlm: llmConsent });
+        extracted.push(res);
+      }
+      setResults(extracted);
+      setFiles([]); // Bỏ tham chiếu tới file gốc sau khi hoàn tất.
       setStatus("done");
     } catch (err) {
-      setFile(null);
+      setFiles([]);
       setStatus("idle");
       const name = (err as Error).name;
       if (name === "AbortError") toast.info("Đã huỷ phân tích và xoá tệp khỏi phiên.");
@@ -64,9 +63,10 @@ export function UploadStepper() {
 
   function reset() {
     setStatus("idle");
-    setFile(null);
+    setFiles([]);
     setConsent(false);
-    setResult(null);
+    setLlmConsent(false);
+    setResults([]);
     setFileMeta(null);
   }
 
@@ -81,21 +81,26 @@ export function UploadStepper() {
           <div>
             <h3 className="text-sm font-semibold">1. Tải lên hồ sơ</h3>
             <p className="text-xs text-muted-foreground">
-              Báo cáo tài chính (mẫu B01-DN, B02-DN) của doanh nghiệp chưa niêm yết. PDF có lớp chữ hoặc PDF scan đều được – trang
-              scan sẽ được nhận dạng ký tự (OCR) ngay trên trình duyệt.
+              Không bắt buộc PDF đúng một mẫu cố định. Hệ thống OCR/đọc chữ, parser đối chiếu mã chỉ tiêu phổ biến; có thể bật LLM để nhận diện cách ghi nhãn khác và trả kèm trích dẫn nguồn.
             </p>
           </div>
-          <Dropzone file={file} onChange={setFile} />
+          <Dropzone file={files} onChange={setFiles} />
           <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 p-3">
             <Checkbox id="consent" checked={consent} onCheckedChange={(v) => setConsent(v === true)} className="mt-0.5" />
             <Label htmlFor="consent" className="text-xs leading-relaxed font-normal">
-              Tôi cam kết có quyền cung cấp hồ sơ này và đồng ý để hệ thống xử lý theo chính sách Zero-Retention: tệp gốc
-              bị xoá ngay sau khi phân tích, không lưu bản sao.
+              Tôi cam kết có quyền cung cấp hồ sơ này và đồng ý xử lý các PDF ngay trong trình duyệt. Sau khi hoàn tất,
+              ứng dụng bỏ tham chiếu tới tệp trong phiên; kết quả trích xuất vẫn hiển thị để tôi rà soát.
+            </Label>
+          </div>
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+            <Checkbox id="llm-consent" checked={llmConsent} onCheckedChange={(v) => setLlmConsent(v === true)} className="mt-0.5" />
+            <Label htmlFor="llm-consent" className="text-xs leading-relaxed font-normal">
+              Bật AI Agent cho buổi demo: tôi cho phép gửi phần văn bản OCR/trích xuất (không gửi file PDF gốc) tới nhà cung cấp LLM đang cấu hình để nhận diện chỉ tiêu. Chỉ dùng tài liệu mẫu hoặc tài liệu tôi được phép chia sẻ; kết quả phải có quote/trang nguồn để đối chiếu.
             </Label>
           </div>
           <div className="flex justify-end">
-            <Button disabled={!file || !consent} onClick={start}>
-              Bắt đầu phân tích <ArrowRight />
+            <Button disabled={!files.length || !consent} onClick={start}>
+              Phân tích {files.length || ""} hồ sơ <ArrowRight />
             </Button>
           </div>
         </section>
@@ -104,13 +109,13 @@ export function UploadStepper() {
       {status === "processing" && fileMeta && (
         <section className="rounded-2xl border bg-card p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">2. Xử lý</h3>
-          <ProcessingPanel stage={stage} fileName={fileMeta.name} message={progress} onCancel={() => abortRef.current?.abort()} />
+          <ProcessingPanel stage={stage} fileName={fileMeta.find((f) => progress?.includes(f.name))?.name ?? fileMeta[0].name} message={progress} aiEnabled={llmConsent} onCancel={() => abortRef.current?.abort()} />
         </section>
       )}
 
-      {(status === "done" || status === "deleted") && result && fileMeta && (
+      {(status === "done" || status === "deleted") && results.length > 0 && fileMeta && (
         <>
-          {status === "deleted" && <RetentionBanner deletedAt={result.deletedAt} fileName={fileMeta.name} fileSize={fileMeta.size} />}
+          {status === "deleted" && fileMeta.map((f, i) => <RetentionBanner key={f.name + i} deletedAt={results[i]?.deletedAt ?? new Date().toISOString()} fileName={f.name} fileSize={f.size} />)}
 
           <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4 shadow-sm print:hidden">
             <p className="text-sm">
@@ -124,7 +129,7 @@ export function UploadStepper() {
             <div className="flex flex-wrap gap-2">
               {status === "done" ? (
                 <Button onClick={() => setStatus("deleted")}>
-                  <Trash2 /> Xác nhận xoá dữ liệu gốc
+                  <Trash2 /> Kết thúc xử lý file trong phiên
                 </Button>
               ) : (
                 <>
@@ -139,7 +144,7 @@ export function UploadStepper() {
             </div>
           </section>
 
-          <PrivateResult result={result} />
+          <div className="space-y-5">{results.map((result, i) => <section key={`${fileMeta[i]?.name}-${i}`} className="space-y-2"><h3 className="text-sm font-semibold">{fileMeta[i]?.name}</h3><p className="text-xs text-amber-700">Dữ liệu trích xuất từ tài liệu nội bộ · chờ người thẩm định xác nhận trước khi áp dụng.</p><PrivateResult result={result} /></section>)}</div>
         </>
       )}
     </div>

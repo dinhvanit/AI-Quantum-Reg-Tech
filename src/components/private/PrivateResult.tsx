@@ -39,7 +39,7 @@ export function PrivateResult({ result }: { result: PrivateAnalysis }) {
       {result.extraction && (
         <DashboardCard
           title="Chỉ tiêu trích xuất từ báo cáo"
-          description="Đối chiếu từng số với dòng gốc trước khi dùng kết quả – OCR có thể đọc sai"
+          description={`OCR + ${result.extraction.ai?.mode === "live" ? `LLM ${result.extraction.ai.provider}/${result.extraction.ai.model}` : "parser quy tắc"}; đối chiếu từng số với trang và quote nguồn trước khi dùng`}
         >
           <ExtractionTable extraction={result.extraction} />
         </DashboardCard>

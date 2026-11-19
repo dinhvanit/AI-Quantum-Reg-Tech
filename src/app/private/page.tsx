@@ -7,18 +7,18 @@ export const metadata: Metadata = { title: "Cổng 2 – Nạp dữ liệu bảo
 const PRINCIPLES = [
   {
     icon: FileLock2,
-    title: "Xử lý trong phiên",
-    body: "Đọc PDF và OCR chạy ngay trên trình duyệt – tệp không được gửi lên máy chủ. Vòng 2: truyền qua TLS tới API, không ghi xuống ổ đĩa.",
+    title: "Xử lý PDF trong trình duyệt",
+    body: "Đọc lớp chữ và OCR chạy trên trình duyệt ở bản demo hiện tại.",
   },
   {
     icon: Trash2,
-    title: "Zero-Retention",
-    body: "Tệp gốc bị xoá ngay khi phân tích xong; giao diện ghi lại thời điểm xoá.",
+    title: "Dọn file phiên",
+    body: "Ứng dụng bỏ tham chiếu tới file sau xử lý. Đây không phải cam kết xóa khỏi log, cache hoặc hạ tầng.",
   },
   {
     icon: EyeOff,
-    title: "Không chia sẻ",
-    body: "Kết quả chỉ hiển thị cho người tải lên, không đưa vào bộ dữ liệu công khai của Cổng 1.",
+    title: "Không ghi vào hồ sơ công khai",
+    body: "Tài liệu không tự nhập vào Cổng 1. Nếu bật AI Agent, phần văn bản trích xuất sẽ được gửi tới LLM provider sau khi bạn xác nhận riêng.",
   },
 ];
 
@@ -28,8 +28,7 @@ export default function PrivatePage() {
       <section className="space-y-4 rounded-2xl border bg-card p-5 shadow-sm print:hidden">
         <h2 className="text-lg font-semibold">Nạp dữ liệu bảo mật</h2>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Dành cho ngân hàng / quỹ thẩm định doanh nghiệp <strong className="text-foreground">chưa niêm yết</strong>: tải báo cáo
-          tài chính (PDF) lên, hệ thống đọc / OCR báo cáo, trích 9 chỉ tiêu và tính Altman Z&apos;-Score, trả kết quả cùng định dạng Cổng 1.
+          Tải báo cáo PDF lên. OCR chạy trên trình duyệt; parser quy tắc và AI Agent có thể cùng trích xuất tối đa 9 chỉ tiêu. LLM chỉ chạy khi bạn bật đồng ý gửi văn bản trích xuất. Mỗi số AI dùng phải kèm quote và trang nguồn khớp nội dung gửi lên; luôn rà soát trước khi dùng.
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {PRINCIPLES.map(({ icon: Icon, title, body }) => (

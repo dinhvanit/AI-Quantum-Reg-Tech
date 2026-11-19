@@ -8,6 +8,7 @@ import {
   FileBarChart2,
   LayoutDashboard,
   Lock,
+  ListFilter,
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 export const NAV_ITEMS = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard, match: (p: string) => p === "/" },
   { href: "/company/VNM", label: "Tra cứu", icon: Search, match: (p: string) => p.startsWith("/company") },
+  { href: "/stocks", label: "Danh sách mã", icon: ListFilter, match: (p: string) => p.startsWith("/stocks") },
   { href: "/private", label: "Nạp DL bảo mật", icon: Lock, match: (p: string) => p.startsWith("/private") },
   { href: "/portfolio", label: "Danh mục", icon: Briefcase, match: (p: string) => p.startsWith("/portfolio") },
   { href: "/report/VNM", label: "Báo cáo", icon: FileBarChart2, match: (p: string) => p.startsWith("/report") },

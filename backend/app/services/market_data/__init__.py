@@ -1,0 +1,1 @@
+"""Licensed market-data adapters."""

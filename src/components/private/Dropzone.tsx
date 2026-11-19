@@ -17,33 +17,22 @@ export function validateFile(file: File): string | null {
   return null;
 }
 
-export function Dropzone({ file, onChange }: { file: File | null; onChange: (file: File | null) => void }) {
+export function Dropzone({ file, onChange }: { file: File[]; onChange: (file: File[]) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function pick(f: File | undefined) {
-    if (!f) return;
-    const err = validateFile(f);
-    setError(err);
-    onChange(err ? null : f);
+  function pickMany(incoming: File[]) {
+    const invalid = incoming.map((f) => ({ file: f, error: validateFile(f) })).find((item) => item.error);
+    if (invalid?.error) { setError(invalid.error); return; }
+    if (file.length + incoming.length > 10) { setError("Mỗi lượt hỗ trợ tối đa 10 tài liệu."); return; }
+    setError(null);
+    onChange([...file, ...incoming]);
   }
 
-  if (file) {
-    const Icon = file.name.toLowerCase().endsWith(".pdf") ? FileText : FileSpreadsheet;
+  if (file.length > 0) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
-        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{file.name}</p>
-          <p className="text-xs text-muted-foreground">{formatBytes(file.size)} · sẵn sàng phân tích</p>
-        </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Bỏ chọn tệp" onClick={() => onChange(null)}>
-          <X />
-        </Button>
-      </div>
+      <div className="space-y-2">{file.map((f, index) => { const Icon = f.name.toLowerCase().endsWith(".pdf") ? FileText : FileSpreadsheet; return <div key={`${f.name}-${index}`} className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3"><div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="size-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{f.name}</p><p className="text-xs text-muted-foreground">{formatBytes(f.size)} · sẵn sàng phân tích</p></div><Button variant="ghost" size="icon-sm" aria-label={`Bỏ ${f.name}`} onClick={() => onChange(file.filter((_, i) => i !== index))}><X /></Button></div>})}<Button variant="outline" size="sm" onClick={() => inputRef.current?.click()}>Thêm PDF</Button>{error && <p role="alert" className="text-xs text-risk-distress">{error}</p>}</div>
     );
   }
 
@@ -60,7 +49,7 @@ export function Dropzone({ file, onChange }: { file: File | null; onChange: (fil
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          pick(e.dataTransfer.files[0]);
+          pickMany(Array.from(e.dataTransfer.files));
         }}
         className={cn(
           "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
@@ -77,11 +66,12 @@ export function Dropzone({ file, onChange }: { file: File | null; onChange: (fil
       <input
         ref={inputRef}
         type="file"
+        multiple
         accept={ACCEPTED.join(",")}
         className="sr-only"
         aria-label="Chọn tệp hồ sơ"
         onChange={(e) => {
-          pick(e.target.files?.[0]);
+          pickMany(Array.from(e.target.files ?? []));
           e.target.value = "";
         }}
       />
