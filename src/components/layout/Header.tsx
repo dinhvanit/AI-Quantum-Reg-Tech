@@ -2,20 +2,36 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GatewayBadge } from "./GatewayBadge";
 import { NAV_ITEMS } from "./Sidebar";
+import { logout } from "@/app/auth-actions";
 
 const today = new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" });
 
-export function Header() {
+type HeaderProps = {
+  user: {
+    name?: string | null;
+    email?: string | null;
+  };
+};
+
+export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
   // Cổng 1 có badge trong header DN của trang; Cổng 2 hiển thị ở đây.
   const gateway = pathname.startsWith("/private") ? 2 : null;
   const title = NAV_ITEMS.find((n) => n.match(pathname))?.label ?? "QuantumRegTech";
+  const displayName = user.name || user.email?.split("@")[0] || "Tài khoản";
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +60,38 @@ export function Header() {
           className="h-9 w-44 bg-background pl-8 sm:w-56"
         />
       </form>
+
+      {!pathname.startsWith("/login") && (
+        <>
+          <div
+            className="flex min-w-0 shrink-0 items-center gap-2"
+            aria-label={`Tài khoản ${displayName}${user.email ? `, ${user.email}` : ""}`}
+            title={user.email || displayName}
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {initials || "U"}
+            </span>
+            <span className="hidden min-w-0 sm:block">
+              <span className="block max-w-36 truncate text-xs font-semibold">{displayName}</span>
+              {user.email && (
+                <span className="block max-w-36 truncate text-[11px] text-muted-foreground">
+                  {user.email}
+                </span>
+              )}
+            </span>
+          </div>
+          <form action={logout}>
+            <button
+              type="submit"
+              aria-label="Đăng xuất"
+              title="Đăng xuất"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="size-4" />
+            </button>
+          </form>
+        </>
+      )}
     </header>
   );
 }

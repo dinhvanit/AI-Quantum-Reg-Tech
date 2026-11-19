@@ -86,6 +86,12 @@ npm run test:e2e   # e2e (Playwright) – tự build và chạy server
 - `.env.example` → `.env.local` ở gốc repo: chỉ biến của Next.js.
 - `backend/.env.example` → `backend/.env`: key dịch vụ và cấu hình FastAPI.
 
+### Đăng nhập Google và Neon PostgreSQL
+
+Frontend sử dụng Auth.js với Google OAuth và đăng nhập email/mật khẩu; các user và tài khoản OAuth lưu trong Neon, còn session Auth.js dùng JWT cookie. Layout protected kiểm tra session ở server, Proxy chuyển request chưa đăng nhập về `/login`, và login không render sidebar/header. `.env.local` là file máy cá nhân, không commit; cấu hình `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` và `DATABASE_URL` ở Vercel trước khi deploy.
+
+Trong Google Cloud Console, thêm `http://localhost:3000/api/auth/callback/google` làm Authorized redirect URI; khi deploy thêm `https://<domain>/api/auth/callback/google`. Tạo schema trên Neon bằng [`database/migrations/001_auth.sql`](database/migrations/001_auth.sql). Đặt `DEMO_AUTH_EMAIL` và `DEMO_AUTH_PASSWORD` trong `.env.local`, rồi chạy `npm run db:seed-demo` để upsert user demo (mật khẩu được lưu dưới dạng bcrypt hash). Tên project Neon là `ai-quantum-reg-tech`; connection string xác định database thực tế.
+
 **Frontend** (`.env.local` / Vercel):
 
 | Biến | Mặc định | Ý nghĩa |
