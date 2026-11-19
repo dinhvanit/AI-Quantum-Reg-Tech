@@ -17,11 +17,11 @@ Lệnh trên chạy FastAPI ở cổng 8000. Nếu chưa cài dependency, tạo 
 
 Ở terminal thứ hai chạy `npm run dev`, rồi mở `http://localhost:3000`. Lệnh `predev` tự sinh JSON và chép tài nguyên OCR. Dùng Node.js 22 theo hướng dẫn repo.
 
-`/api/universe` phải trả 200. Nếu trả 503, kiểm tra `http://127.0.0.1:8000/health`, `QUANTUM_API_URL` hoặc `NEXT_PUBLIC_API_URL`, sau đó khởi động lại Next.js nếu vừa sửa `.env.local`. Kiểm tra Neo4j tại `http://127.0.0.1:8000/api/v1/graph/status`; `ready_empty` nghĩa là DB kết nối được nhưng chưa có node.
+`/api/universe` phải trả 200. Nếu trả 503, kiểm tra `http://127.0.0.1:8000/health`, `QUANTUM_API_URL` hoặc `NEXT_PUBLIC_API_URL`, sau đó khởi động lại Next.js nếu vừa sửa `.env.local` (hoặc FastAPI nếu vừa sửa `backend/.env`). Kiểm tra Neo4j tại `http://127.0.0.1:8000/api/v1/graph/status`; `ready_empty` nghĩa là DB kết nối được nhưng chưa có node.
 
 ### Chọn chế độ OSINT
 
-- Firecrawl là nguồn tìm kiếm duy nhất: mỗi mã chạy 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính), lọc `OSINT_LOOKBACK_YEARS` năm gần nhất, scrape nội dung bài. Cần `FIRECRAWL_API_KEY` trong `.env.local`; thiếu key → app hiện sự kiện workbook với nhãn `DEMO DATA`.
+- Firecrawl là nguồn tìm kiếm duy nhất: mỗi mã chạy 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính), lọc `OSINT_LOOKBACK_YEARS` năm gần nhất, scrape nội dung bài. Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key → app hiện sự kiện workbook với nhãn `DEMO DATA`.
 - Chi phí: khoảng 4 × (2 + `OSINT_FIRECRAWL_LIMIT`) credit cho mỗi mã mỗi lượt quét (mặc định ≈ 28). Kiểm tra số credit còn lại trước buổi demo.
 - Jina Reader chỉ đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được (tắt bằng `OSINT_JINA_FALLBACK=false`). Gemini/Groq có thể đề xuất loại/mức sự kiện; đây không phải xác nhận vi phạm.
 - Nếu FastAPI không chạy, route Next.js không tự tìm kiếm thay mà trả sự kiện workbook kèm cảnh báo "Không kết nối được backend OSINT".
@@ -47,7 +47,7 @@ Luồng Firecrawl-only mới chỉ được kiểm bằng test backend với pro
 - Khi không có kết quả live, app dùng sự kiện workbook và gắn nhãn `DEMO DATA`.
 - Hồ sơ OSINT hiển thị các bước agent và trạng thái Neo4j. Hiện Aura đã kết nối nhưng graph rỗng; muốn nạp dữ liệu workbook demo thì chạy lệnh seed có cờ ghi chủ động trong [backend README](../backend/README.md).
 - Cấu hình MCP cho IDE nằm trong `.vscode/mcp.json`. Bật Tool authentication trong Aura Console, mở VS Code và hoàn tất OAuth trong browser. Chỉ đọc graph khi demo.
-- Mẫu đầy đủ nằm trong `.env.example`. Chỉ thêm các dòng còn thiếu vào `.env.local`, không ghi đè các key hiện có; sửa `.env.local` xong thì khởi động lại `npm run dev`.
+- Mẫu: `.env.example` (frontend → `.env.local`) và `backend/.env.example` (FastAPI → `backend/.env`). Chỉ thêm các dòng còn thiếu, không ghi đè key hiện có; sửa xong thì khởi động lại `npm run dev` hoặc uvicorn tương ứng.
 - Nếu provider lỗi, giao diện giữ kết quả từ provider khác hoặc báo rõ fallback; không nói rằng app vừa xác minh vi phạm.
 
 ### Tệp PDF demo
@@ -117,7 +117,7 @@ Thiết kế universe không giới hạn ở bốn mã. Để một mã có ph�
 
 | Hiện tượng | Cách xử lý demo |
 |---|---|
-| `/api/universe` trả 503 | Khởi động FastAPI ở cổng 8000 trong cùng workspace, kiểm tra `/health` và URL backend trong `.env.local` |
+| `/api/universe` trả 503 | Khởi động FastAPI ở cổng 8000 trong cùng workspace, kiểm tra `/health` và URL backend trong `.env.local` (Vercel: biến môi trường của project) |
 | Search provider timeout/quota | Nêu rõ nguồn nào lỗi; nếu không còn kết quả live thì app dùng workbook fallback có nhãn `DEMO DATA` |
 | Document Agent `RateLimitError` | Chờ quota provider hồi phục hoặc đổi `AI_PROVIDER` sang provider khác đã cấu hình; kết quả Rules vẫn hiển thị. Không gửi lại liên tục vì sẽ tăng rate limit |
 | Document Agent báo 413 | Bản hiện tại giới hạn và lọc context trước khi gửi. Nếu provider vẫn từ chối request, dùng PDF ngắn hơn hoặc giảm số trang; parser Rules vẫn là fallback |

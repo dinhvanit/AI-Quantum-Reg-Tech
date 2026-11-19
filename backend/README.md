@@ -25,7 +25,23 @@ Set `NEXT_PUBLIC_USE_MOCK=false` so public company/ESG/OSINT/methodology/scenari
 
 The OSINT endpoint runs a bounded LangGraph (`discover → graph_enrichment → extract → classify → validate`). Discovery uses Firecrawl only: four penalty-category queries per ticker (tax, environment, securities, administrative) with article scraping; Jina Reader reads at most three results Firecrawl could not scrape. Without `FIRECRAWL_API_KEY` the scan returns workbook events labelled demo. LangChain calls Groq or Gemini for structured proposals. Neo4j enrichment uses read-only, parameterized lookups; the model never supplies Cypher. Search findings stay unverified and reviewer actions remain session-local; there is no persistent audit/checkpoint store yet.
 
-Local service secrets are loaded from the repository root `.env.local` (outside `src/`), which is ignored by Git. The app reads the supplied DB connection file through `NEO4J_CREDENTIALS_FILE`; the database password is not copied into the repo. In production, configure `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, and `NEO4J_DATABASE` in the FastAPI host's secret manager. Never put them in `NEXT_PUBLIC_*` variables.
+## Configuration
+
+Copy `backend/.env.example` to `backend/.env` (ignored by Git). Load order: real process env → `backend/.env` → root `.env.local` (legacy fallback for machines that still keep one shared file); an existing value is never overwritten. Locally, `NEO4J_CREDENTIALS_FILE` can point to the Aura connection file outside the repo so the password is not copied. In production, configure `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, and `NEO4J_DATABASE` in the FastAPI host's secret manager. Never put them in `NEXT_PUBLIC_*` variables.
+
+## Deploy (separate from the frontend)
+
+```bash
+npm run data                                            # data/generated/*.json is copied into the image
+docker build -f backend/Dockerfile -t quantumregtech-api .   # context = repo root, filtered by /.dockerignore
+docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
+```
+
+- Inject variables from `backend/.env.example` through the host's env/secret manager; the image contains no `.env`. The container listens on `$PORT` (default 8000).
+- Set `CORS_ORIGINS` to the frontend origin(s), e.g. `https://<app>.vercel.app`.
+- The SQLite registry (`UNIVERSE_DB_PATH`) is lost on redeploy unless it points to a mounted volume.
+- Workbook changes require `npm run data` and a new image.
+- Health check: `GET /health`. Full checklist: [`docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 The connected Aura database currently contains no nodes. To deliberately load the four workbook companies and the workbook OSINT event as `demo=true`, run:
 

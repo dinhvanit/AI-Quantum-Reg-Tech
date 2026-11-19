@@ -2,7 +2,7 @@
 
 ## Kết nối ứng dụng
 
-Ứng dụng FastAPI dùng Neo4j Python driver với truy vấn read-only được viết sẵn. LLM không tự sinh Cypher. Trong local demo, `.env.local` trỏ đến file thông tin DB nằm ngoài repo; khi deploy, đặt `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` và `NEO4J_DATABASE` trong secret manager của backend.
+Ứng dụng FastAPI dùng Neo4j Python driver với truy vấn read-only được viết sẵn. LLM không tự sinh Cypher. Trong local demo, `backend/.env` trỏ đến file thông tin DB nằm ngoài repo; khi deploy, đặt `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` và `NEO4J_DATABASE` trong secret manager của backend.
 
 Kết quả kiểm tra ngày 19-11-2026: kết nối Aura thành công, database `neo4j` đang rỗng. Khi cần tạo dữ liệu demo từ workbook, chạy lệnh seed được ghi trong [backend README](../backend/README.md). Lệnh ghi yêu cầu bật `NEO4J_ALLOW_DEMO_WRITE=true` cho đúng lần chạy đó; API không seed lúc startup.
 
@@ -43,10 +43,10 @@ MCP server cho phép client đọc schema và truy vấn graph theo tool đượ
 ## Phân biệt các thông tin trong ba file
 
 - File `Neo4j-...Created...` có Bolt URI, database username/password; ứng dụng driver dùng loại credential này.
-- Hai file `Neo4j-credentials-test...` chứa Aura API client credentials. Chúng dùng cho Aura management API, không thay thế Bolt login và không cần cho hosted MCP browser OAuth. Không chuyển chúng vào `.env.local` của app.
+- Hai file `Neo4j-credentials-test...` chứa Aura API client credentials. Chúng dùng cho Aura management API, không thay thế Bolt login và không cần cho hosted MCP browser OAuth. Không chuyển chúng vào file env của app.
 
 ## Secret locations
 
-- Local monorepo: root `.env.local`, cùng cấp với `package.json`, ngoài `src/`. File đang di-ignore.
-- Example committed to Git: root `.env.example`, chỉ tên biến và giá trị giả.
+- Local: `backend/.env` (FastAPI, chứa thông tin Neo4j); `.env.local` ở root chỉ cho Next.js. Cả hai đang được ignore.
+- Example committed to Git: `backend/.env.example` (biến Neo4j) và `.env.example` (frontend), chỉ tên biến và giá trị giả.
 - Production: secret manager của từng runtime. Frontend host nhận API URL; FastAPI host nhận provider keys và Neo4j connection secrets. Không đưa secret vào `NEXT_PUBLIC_*` hoặc image build args.

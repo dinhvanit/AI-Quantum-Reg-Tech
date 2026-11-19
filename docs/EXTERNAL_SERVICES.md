@@ -40,7 +40,7 @@ Pricing/terms references: [Firecrawl pricing](https://www.firecrawl.dev/pricing)
 
 ## Security and data rules
 
-- Local mono-repo secrets live in root `.env.local` (outside `src/`, ignored by Git); Next.js and FastAPI load the server keys. Production values belong to each service's secret manager. Only non-secret API URL/config may be `NEXT_PUBLIC_*`.
+- Local secrets: service keys live in `backend/.env` (template `backend/.env.example`); root `.env.local` holds only Next.js settings (template `.env.example`). Both are ignored by Git. Production values belong to each service's secret manager (see `docs/DEPLOY.md`). Only non-secret API URL/config may be `NEXT_PUBLIC_*`.
 - Retrieved pages and PDFs are untrusted input. Instruct extraction models to ignore embedded instructions; expose no arbitrary browser, shell, or file tools to the model.
 - Validate URL scheme, host, response size, content type, and timeout. Restrict internal-address access to prevent SSRF if the service fetches arbitrary URLs.
 - Require source URL and a supporting quote/snippet for every OSINT extraction. Do not let a model invent source metadata.

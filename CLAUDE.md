@@ -28,7 +28,7 @@ data/QuantumRegTech_Data.xlsx ─(npm run data)─► data/generated/*.json ─�
 - **Backend** (`backend/app/`): FastAPI – `api/routes` (router `/api/v1`), `domain/contracts.py`, `repositories/` (workbook, universe SQLite cho mã `pending_data`), `services/` (Neo4j, SSI market data – chưa có credential), `agents/` (LangGraph OSINT + document).
 - Bố cục: `src/` chỉ chứa code Next.js; `backend/` là service Python riêng (deps, Dockerfile, deploy riêng) – không đặt Python vào `src/`. Dữ liệu dùng chung nằm ở `data/generated/` (Next.js import qua alias `@data/*`, FastAPI qua `GENERATED_DATA_DIR`).
 - `NEXT_PUBLIC_USE_MOCK=true` → UI đọc JSON trực tiếp, không cần backend; `false` → đọc qua FastAPI (`NEXT_PUBLIC_API_URL`, `QUANTUM_API_URL`).
-- Biến môi trường: `.env.example` → `.env.local` ở **gốc repo** (FastAPI cũng đọc file này). Chỉ thêm dòng thiếu, không ghi đè key có sẵn.
+- Biến môi trường (frontend và backend **deploy riêng**): `.env.example` → `.env.local` ở gốc repo cho Next.js; `backend/.env.example` → `backend/.env` cho FastAPI (key dịch vụ, `CORS_ORIGINS`). FastAPI vẫn đọc `.env.local` ở root làm fallback. Chỉ thêm dòng thiếu, không ghi đè key có sẵn. Thêm biến mới → cập nhật đúng file mẫu và `docs/DEPLOY.md`.
 
 ## Tài liệu bắt buộc đọc trước khi code
 - `.specify/memory/constitution.md` – nguyên tắc bằng chứng, tính toán tất định, human review, riêng tư

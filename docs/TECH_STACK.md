@@ -21,7 +21,7 @@
 | Font | **Be Vietnam Pro** (UI), **JetBrains Mono** (số liệu) qua `next/font` | Hỗ trợ tiếng Việt đầy đủ |
 | Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `data/generated/` (dùng chung cho Next.js qua alias `@data/*` và FastAPI) | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
 | Xuất PDF | Trang `/report/[ticker]` + CSS `@media print` → *Save as PDF* | Không cần thư viện PDF |
-| Deploy | **Vercel** | Preview link cho mỗi branch/PR |
+| Deploy | **Vercel** (frontend) + container (FastAPI) | Deploy riêng; Vercel có preview link cho mỗi branch/PR – checklist: `docs/DEPLOY.md` |
 | Code quality | ESLint (`eslint-config-next`) | Có sẵn khi khởi tạo Next.js (Prettier chưa cài) |
 | Test | **Vitest** (unit) + **Playwright** (e2e) | `npm test`, `npm run test:e2e` – xem mục 6 |
 | (Tuỳ chọn) Backend | **FastAPI** + SciPy (COBYLA) | Chạy tối ưu danh mục "live" khi kéo slider |
@@ -102,12 +102,13 @@ backend/                          # FastAPI + LangGraph (Python, deploy riêng �
 │   ├── main.py                   # Composition root
 │   ├── api/routes/               # /api/v1/* (companies, analysis, osint, private)
 │   ├── agents/                   # LangGraph: osint_graph.py (Firecrawl), document_graph.py (Cổng 2 opt-in)
-│   ├── core/config.py            # Đọc .env.local ở root, đường dẫn data/generated
+│   ├── core/config.py            # Đọc backend/.env (fallback .env.local ở root), đường dẫn data/generated
 │   ├── domain/ · repositories/   # Hợp đồng Pydantic; đọc JSON workbook, registry SQLite pending_data
 │   ├── services/                 # Neo4j (read-only), market_data/ssi.py (chưa kích hoạt)
 │   └── ingestion/ · seed_graph.py # CLI chủ động: tải lịch sử SSI, seed Neo4j demo
 ├── tests/                        # pytest – provider giả lập
-└── Dockerfile                    # Build từ root repo sau npm run data
+├── .env.example                  # Biến của FastAPI (key dịch vụ, CORS) – copy thành backend/.env
+└── Dockerfile                    # Build từ root repo sau npm run data (context lọc bởi /.dockerignore)
 specs/ · .specify/                # Spec Kit: đặc tả tính năng, constitution
 scripts/
 ├── build-data.mjs                # Excel → data/generated/*.json (chạy trước dev / build / test)

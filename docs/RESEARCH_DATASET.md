@@ -35,7 +35,7 @@ Prototype: `data/research/raw/` và `data/research/normalized/` dạng Parquet/J
 Backend đã có client read-only SSI FastConnect V3 (`backend/app/services/market_data/ssi.py`) và CLI ghi raw JSONL (`backend/app/ingestion/ssi_history.py`). Nó yêu cầu `SSI_API_KEY`/`SSI_API_SECRET`, gọi token + paginated `/api/v3/data/ohlc`, giữ giá trị nguồn và nhãn raw/unadjusted. Chưa được gọi bằng tài khoản của bạn hoặc dùng để backtest cho tới khi quyền API, đơn vị và corporate actions được xác nhận.
 
 ```bash
-# Đưa credentials SSI Market Data vào .env.local ở máy bạn; không gửi key qua chat/Git.
+# Đưa credentials SSI Market Data vào backend/.env ở máy bạn; không gửi key qua chat/Git.
 PYTHONPATH=backend backend/.venv/bin/python -m app.ingestion.ssi_history \
   --symbols VNM SAB MCM SBT --from-date 2021-01-01 --to-date 2026-11-19
 ```

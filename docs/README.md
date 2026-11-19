@@ -14,6 +14,7 @@
 - [Agent Platform architecture and deployment plan](../specs/002-agent-platform/plan.md)
 - [Agent Platform backlog](../specs/002-agent-platform/tasks.md)
 - [Neo4j Aura and MCP setup](NEO4J_MCP.md)
+- [Deploy tách frontend (Vercel) và backend (FastAPI)](DEPLOY.md)
 - [Domain data model](../specs/001-investor-due-diligence-demo/data-model.md)
 - [Draft API contract](../specs/001-investor-due-diligence-demo/contracts/openapi.yaml)
 
