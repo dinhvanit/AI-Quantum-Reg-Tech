@@ -62,7 +62,7 @@ backend/.venv/bin/pip install -r backend/requirements-dev.txt && (cd backend && 
 4. **LLM không tính** tỷ số, điểm, tỷ trọng, mức phạt hay ràng buộc – chỉ trích xuất/phân loại/giải thích có trích dẫn. Số tài chính do code tất định tính.
 5. Đầu ra AI (OSINT, trích xuất PDF) là **đề xuất**: phải có quote khớp nguồn (và trang với PDF) mới được dùng; vẫn cần người duyệt. Không gọi bài báo là "vi phạm đã xác nhận". Provider lỗi → giữ baseline/fallback và báo đúng nguyên nhân, không giả kết quả AI.
 6. Dữ liệu workbook dùng thay cho kết quả live phải gắn nhãn `DEMO DATA`; phân biệt rõ dữ liệu demo/live, công khai/riêng tư, ước lượng/công bố.
-7. Màu chỉ dùng design token (`risk-safe`, `risk-grey`, `risk-distress`, `primary`, `quantum`, `chart-1..5`); không hard-code hex. `quantum` chỉ cho Lõi Lượng tử/QUBO. ECharts lấy màu qua `useCssVars()`.
+7. Màu chỉ dùng design token (`risk-safe`, `risk-grey`, `risk-distress`, `primary`, `quantum`, `chart-1..5`); không hard-code hex. `quantum` chỉ cho Lõi Lượng tử/QUBO. Biểu đồ chỉ dùng **ECharts** (đã bỏ Recharts), lấy màu qua `useCssVars()` + `components/charts/echarts-base.ts`.
 8. Màu rủi ro luôn đi kèm nhãn chữ (vd. badge "Distress").
 9. Định dạng số kiểu Việt qua `src/lib/format.ts` (`9,95%`, `50,9 tỷ`).
 10. Mỗi trang có trạng thái loading (Skeleton), empty, error.

@@ -15,8 +15,7 @@
 | Styling | **Tailwind CSS v4** | Utility-first, token khai báo bằng CSS variables trong `src/app/globals.css` (không có `tailwind.config`) |
 | UI components | **shadcn/ui** style `base-nova` (**Base UI** `@base-ui/react` bên dưới, không phải Radix) | Card, Table, Tabs, Slider, Select, Checkbox, Badge, Progress, Tooltip, Sonner… |
 | Icon | **lucide-react** | Bộ icon đồng bộ với shadcn |
-| Biểu đồ cơ bản | **Recharts 3** | Radar ESG, Donut phân bổ vốn, Bar backtest |
-| Biểu đồ nâng cao | **Apache ECharts 6** (`echarts-for-react/lib/core`, import theo module) | Gauge Z-Score, Heatmap ma trận QUBO (Heatmap rủi ro: chưa làm) |
+| Biểu đồ | **Apache ECharts 6** (`echarts-for-react/lib/core`, import theo module) – thư viện biểu đồ **duy nhất** | Gauge Z-Score, Radar ESG, Donut phân bổ vốn, Bar so sánh lợi nhuận, Heatmap ma trận QUBO (Heatmap rủi ro: chưa làm). Bỏ Recharts (2026-11-19) vì không có gauge/heatmap |
 | Đọc PDF / OCR (Cổng 2) | **pdf.js** (`pdfjs-dist` 6 – bản đã vá lỗi chạy mã khi mở PDF độc hại) + **Tesseract.js 7** + `@tesseract.js-data/vie` | Chạy trong trình duyệt; worker, lõi WASM, mô hình tiếng Việt tự host ở `public/vendor` |
 | State | **Zustand 5** (`src/store/portfolio.ts`) | Tham số α β γ δ, solver, danh sách DN theo dõi |
 | Font | **Be Vietnam Pro** (UI), **JetBrains Mono** (số liệu) qua `next/font` | Hỗ trợ tiếng Việt đầy đủ |
@@ -44,7 +43,7 @@ npx shadcn@latest init -d
 npx shadcn@latest add button card badge table tabs slider dialog input progress \
   sheet tooltip separator skeleton sonner dropdown-menu select alert checkbox label
 
-npm i recharts echarts echarts-for-react zustand lucide-react
+npm i echarts echarts-for-react zustand lucide-react
 npm i pdfjs-dist@^6.3.289 tesseract.js@7 @tesseract.js-data/vie   # OCR Cổng 2
 npm i -D @types/node@^22 vitest @playwright/test exceljs   # @types/node ^22 để tương thích Vitest; exceljs đọc file Excel dữ liệu
 npx playwright install chromium
@@ -153,7 +152,7 @@ Quy tắc: **component không bao giờ `import` trực tiếp từ `@data/*`** 
 ## 6. Quy ước
 
 - Branch: `feat/<màn-hình>`, `fix/<mô-tả>`; merge qua PR để có Vercel preview.
-- Màu sắc: chỉ dùng token (`bg-primary`, `text-risk-distress`…), không hard-code mã hex trong component. Thư viện vẽ canvas (ECharts) lấy màu qua `useCssVars()`; Recharts (SVG) dùng thẳng `var(--token)`.
+- Màu sắc: chỉ dùng token (`bg-primary`, `text-risk-distress`…), không hard-code mã hex trong component. ECharts vẽ canvas nên lấy màu qua `useCssVars()`; tooltip và bảng màu chuỗi dùng chung `components/charts/echarts-base.ts`. Mỗi biểu đồ có `aria-label` nêu số liệu (canvas không đọc được bằng trình đọc màn hình).
 - Số liệu: luôn qua `format.ts` (`formatPct(0.0995) → "9,95%"`, dấu phẩy thập phân kiểu Việt). Ô `"TODO"` trong JSON → hiển thị "—"; biểu đồ thiếu số liệu → `EmptyChart`, **không tự điền số**.
 - Mọi màn hình phải có trạng thái **loading (Skeleton)**, **empty**, **error**: dùng `loading.tsx`, `error.tsx`, `not-found.tsx` của App Router.
 - Trang dữ liệu là Server Component gọi `api.ts`; phần tương tác (biểu đồ, slider, upload) tách thành Client Component (`"use client"`).

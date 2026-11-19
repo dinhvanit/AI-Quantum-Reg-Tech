@@ -16,7 +16,8 @@ test("Dashboard hiển thị số liệu từ api", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("15,96%")).toBeVisible();
   await expect(page.getByText("+4,11 điểm % so với Baseline")).toBeVisible();
-  await expect(page.locator(".recharts-pie-sector")).toHaveCount(4);
+  await expect(page.getByLabel("Biểu đồ tròn tỷ trọng danh mục").locator("canvas")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Tỷ trọng danh mục" }).locator("tbody tr")).toHaveCount(4);
 });
 
 test("Cổng 1 – MCM có bằng chứng tẩy xanh và sự kiện OSINT", async ({ page }) => {

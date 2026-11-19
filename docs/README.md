@@ -27,7 +27,7 @@
 - [Current tech stack inventory](TECH_STACK.md)
 - [Demo status and known limitations](DEMO_STATUS.md)
 - [Lộ trình triển khai theo phase](IMPLEMENTATION_ROADMAP.md)
-- [Original build packet](QuantumRegTech_Coding_Agent_Packet.md)
+- [Original build packet (lưu trữ – không còn là nguồn sự thật)](archive/QuantumRegTech_Coding_Agent_Packet.md)
 
 ## Source-of-truth order
 

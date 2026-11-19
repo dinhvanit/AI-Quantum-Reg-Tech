@@ -1,3 +1,5 @@
+> **Lưu trữ (2026-11-19).** Tài liệu gốc giao cho coding agent ở giai đoạn đầu; nhiều điểm đã thay đổi (backend FastAPI/LangGraph, OSINT chỉ dùng Firecrawl, dữ liệu ở `data/generated/`, chỉ dùng ECharts). Trạng thái hiện tại: `docs/DEMO_STATUS.md`, `docs/TECH_STACK.md`, `CLAUDE.md`.
+
 # QuantumRegTech --- Product Build Packet for Coding Agent
 
 > **Mục tiêu:** Hoàn thiện MVP demo end-to-end của QuantumRegTech để nhà
