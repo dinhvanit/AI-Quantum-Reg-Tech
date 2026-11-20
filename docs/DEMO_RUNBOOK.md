@@ -21,14 +21,11 @@ Lệnh trên chạy FastAPI ở cổng 8000. Nếu chưa cài dependency, tạo 
 
 ### Chọn chế độ OSINT
 
-- Firecrawl là nguồn duy nhất, chọn bằng `OSINT_DISCOVERY`:
-  - `agent` (mặc định): mỗi mã chạy một job Firecrawl Agent nghiên cứu sự kiện xử phạt trong `OSINT_LOOKBACK_YEARS` năm, trả danh sách có URL và câu trích nguyên văn. Backend đọc lại từng trang nguồn (Firecrawl scrape, Jina dự phòng) và chỉ coi quote là khớp khi tìm thấy trong trang đó. **Thường mất vài phút** – giao diện hiện số giây đã chờ.
-  - `search`: 4 truy vấn (thuế, môi trường, chứng khoán, hành chính) mỗi mã, xong trong vài chục giây.
-- Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key → app hiện sự kiện workbook với nhãn `DEMO DATA`.
-- Chi phí: agent tới `OSINT_AGENT_MAX_CREDITS` (mặc định 500) + tối đa 20 trang scrape mỗi mã; search ≈ 4 × (2 + `OSINT_FIRECRAWL_LIMIT`). Kiểm tra credit trước buổi demo; nên chạy sẵn một lượt trước giờ trình bày.
-- Jina Reader chỉ đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được (tắt bằng `OSINT_JINA_FALLBACK=false`). Gemini/Groq có thể đề xuất loại/mức sự kiện; đây không phải xác nhận vi phạm.
-- Nếu FastAPI không chạy, route Next.js không tự tìm kiếm thay mà trả sự kiện workbook kèm cảnh báo "Không kết nối được backend OSINT".
-- Để bật AI: chọn `AI_PROVIDER=groq` hoặc `gemini` và điền key/model tương ứng. Chỉ excerpt bài báo công khai được gửi cho model; PDF riêng tư vẫn xử lý cục bộ.
+- Chỉ dùng Firecrawl Agent API: mỗi lượt quét = 1 job cho 1 mã, 1 năm dữ liệu t, prompt "Tìm các sự kiện doanh nghiệp {tên} (mã {mã}) bị cơ quan nhà nước xử phạt, truy thu hoặc kết luận vi phạm trong năm {t}". **Thường mất vài phút** – giao diện hiện số giây đã chờ.
+- Chạy ở `/portfolio` → "Kiểm tra OSINT năm t" (hoặc ở `/company/[mã]` cho năm mới nhất). Sự kiện đã duyệt trong workbook hiện ở mục riêng và đã được tính; sự kiện mới phải mở nguồn rồi bấm "Chấp nhận mức 1/2/3" hoặc "Bỏ".
+- Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key hoặc FastAPI không chạy → chỉ hiện sự kiện đã duyệt trong workbook kèm cảnh báo.
+- Chi phí: tới `OSINT_AGENT_MAX_CREDITS` (mặc định 500) mỗi mã mỗi lượt. Kiểm tra credit trước buổi demo; nên chạy sẵn một lượt trước giờ trình bày.
+- `OSINT_VERIFY_SOURCES=false` (mặc định): không đọc lại trang nguồn, không gọi LLM. Bật `true` để kiểm quote bằng Firecrawl scrape (1 credit/trang) và cho Groq/Gemini gợi ý mức. Jina giữ trong code nhưng tắt.
 
 ## Kiểm chứng AI Agent trong demo
 

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("smoke – mọi trang render không lỗi", () => {
-  for (const path of ["/", "/company/VNM", "/company/MCM", "/company/SBT", "/portfolio", "/private", "/report/SBT"]) {
+  for (const path of ["/", "/company/VNM", "/company/PAN", "/company/SBT", "/stocks", "/portfolio", "/private", "/report/PAN"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -12,20 +12,18 @@ test.describe("smoke – mọi trang render không lỗi", () => {
   }
 });
 
-test("Dashboard hiển thị số liệu từ api", async ({ page }) => {
+test("Dashboard hiển thị 9 mã, năm dữ liệu 2024 → 2025", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("15,96%")).toBeVisible();
-  await expect(page.getByText("+4,11 điểm % so với Baseline")).toBeVisible();
-  await expect(page.getByLabel("Biểu đồ tròn tỷ trọng danh mục").locator("canvas")).toBeVisible();
-  await expect(page.getByRole("table", { name: "Tỷ trọng danh mục" }).locator("tbody tr")).toHaveCount(4);
+  await expect(page.getByText("2024 → 2025")).toBeVisible();
+  await expect(page.locator("table").first().locator("tbody tr")).toHaveCount(9);
 });
 
-test("Cổng 1 – MCM có bằng chứng tẩy xanh và sự kiện OSINT", async ({ page }) => {
-  await page.goto("/company/MCM");
-  await expect(page.getByText("Rủi ro tẩy xanh: Cao")).toBeVisible();
-  await expect(page.getByText("Báo chí phản ánh nguy cơ ô nhiễm môi trường").first()).toBeVisible();
+test("Cổng 1 – PAN có sự kiện OSINT đã duyệt tính vào năm 2024", async ({ page }) => {
+  await page.goto("/company/PAN");
+  await expect(page.getByText(/Khai sai thiếu thuế/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Quét OSINT PAN năm 2024" })).toBeVisible();
   await page.getByRole("button", { name: "Thêm vào danh mục" }).click();
-  await expect(page.getByText("Đã thêm MCM vào danh mục theo dõi")).toBeVisible();
+  await expect(page.getByText("Đã thêm PAN vào danh mục theo dõi")).toBeVisible();
 });
 
 test("Cổng 1 – mức độ công bố ESG theo trụ cột", async ({ page }) => {
@@ -44,18 +42,13 @@ test("ticker không tồn tại → trang 404", async ({ page }) => {
   await expect(page.getByText("Không tìm thấy trang")).toBeVisible();
 });
 
-test("Danh mục – kéo γ, δ về 0 chuyển sang kịch bản Baseline", async ({ page }) => {
+test("Danh mục – chọn năm dữ liệu, đối chiếu lợi suất thực tế năm sau", async ({ page }) => {
   await page.goto("/portfolio");
-  await expect(page.getByText("50,9%").first()).toBeVisible();
-  for (const name of ["γ – ESG", "δ – Phạt rủi ro"]) {
-    const thumb = page.getByRole("slider", { name });
-    await thumb.focus();
-    await page.keyboard.press("Home");
-  }
-  await expect(page.getByText("Kịch bản gần nhất: α=1 β=1 γ=0 δ=0")).toBeVisible();
-  await expect(page.getByRole("cell", { name: "55,0%" }).first()).toBeVisible();
-  await page.getByRole("tab", { name: "Lõi Lượng tử" }).click();
-  await expect(page.getByText("Mô phỏng / Vòng 2")).toBeVisible();
+  await page.getByRole("button", { name: /Cân bằng tăng trưởng và ESG/ }).click();
+  await expect(page.getByText("Lợi suất thực tế 2025")).toBeVisible();
+  await page.getByRole("button", { name: "2023 → 2024" }).click();
+  await expect(page.getByText("Lợi suất thực tế 2024")).toBeVisible();
+  await expect(page.getByText("Kiểm tra OSINT năm 2023")).toBeVisible();
 });
 
 test.describe("Cổng 2 – Nạp dữ liệu bảo mật", () => {
@@ -116,14 +109,14 @@ test.describe("Cổng 2 – Nạp dữ liệu bảo mật", () => {
     await expect(page.getByText("Kéo thả hồ sơ vào đây")).toBeVisible();
   });
 
-  test("Excel → kết quả mẫu (chưa hỗ trợ trích xuất Excel)", async ({ page }) => {
-    await upload(page, XLSX);
-    await expect(page.getByText("Kết quả mẫu chưa có số liệu")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("CTCP Chuỗi Sữa TH")).toBeVisible();
+  test("Excel chưa hỗ trợ → từ chối ngay khi chọn tệp", async ({ page }) => {
+    await page.goto("/private");
+    await page.getByLabel("Chọn tệp hồ sơ").setInputFiles(XLSX);
+    await expect(page.getByText(/Định dạng \.xlsx không được hỗ trợ/)).toBeVisible();
   });
 
   test("huỷ khi đang xử lý quay về bước tải lên", async ({ page }) => {
-    await upload(page, XLSX);
+    await upload(page, `${FIX}-scan.pdf`);
     await page.getByRole("button", { name: "Huỷ & xoá tệp" }).click();
     await expect(page.getByText("Kéo thả hồ sơ vào đây")).toBeVisible({ timeout: 5_000 });
   });

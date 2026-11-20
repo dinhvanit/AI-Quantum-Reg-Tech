@@ -15,7 +15,7 @@ import { XTable } from "@/components/company/XTable";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { ZoneBadge } from "@/components/dashboard/ZoneBadge";
 import { GatewayBadge } from "@/components/layout/GatewayBadge";
-import { getCompanies, getEsgIndicators } from "@/lib/api";
+import { getCompanies, getEsgIndicators, getMethodology } from "@/lib/api";
 import { formatNumber, formatPct, formatText } from "@/lib/format";
 import { getOverview } from "@/lib/overview";
 import { ALTMAN_FORMULA, GREENWASHING_LABEL, GREENWASHING_ZONE, ZONE_CLASS } from "@/lib/risk";
@@ -32,7 +32,7 @@ export async function generateMetadata(props: PageProps<"/company/[ticker]">) {
 
 export default async function CompanyPage(props: PageProps<"/company/[ticker]">) {
   const { ticker } = await props.params;
-  const [overview, companies, esgSet] = await Promise.all([getOverview(ticker), getCompanies(), getEsgIndicators()]);
+  const [overview, companies, esgSet, method] = await Promise.all([getOverview(ticker), getCompanies(), getEsgIndicators(), getMethodology()]);
   if (!overview) notFound();
 
   const { company, zscore, esg, allEvents, posint, rfinTotal } = overview;
@@ -163,8 +163,15 @@ export default async function CompanyPage(props: PageProps<"/company/[ticker]">)
         </DashboardCard>
       </div>
 
-      <DashboardCard title="Quét OSINT" description="Thu thập candidate mới cho doanh nghiệp này; chỉ bằng chứng được reviewer duyệt mới đủ điều kiện thay đổi POSINT.">
-        <OsintScanner ticker={company.ticker} posint={posint} rfinTotal={rfinTotal} existingUrls={allEvents.map((event) => event.url)} />
+      <DashboardCard title={`Quét OSINT năm ${method.dataYear}`} description="Firecrawl Agent tìm sự kiện xử phạt trong năm dữ liệu; sự kiện mới chỉ được tính khi người dùng chấp nhận và chọn mức.">
+        <OsintScanner
+          ticker={company.ticker}
+          year={method.dataYear}
+          rfinBase={zscore.rfinBase}
+          workbookLevel={overview.events.reduce((max, event) => Math.max(max, event.severity), 0)}
+          penaltyTable={method.penaltyTable}
+          existingUrls={allEvents.map((event) => event.url)}
+        />
       </DashboardCard>
     </div>
   );

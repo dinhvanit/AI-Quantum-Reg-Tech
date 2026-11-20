@@ -18,6 +18,9 @@ export interface FinancialEnginePayload {
   recordCount: number;
   reconciliation: { status: string; metricsPerRecord: number };
   optimizerReadiness: { ready: boolean; missing: string[]; note: string };
+  companies: Record<string, { name: string }>;
+  /** Params: mức vi phạm 0–3 → P_OSINT. */
+  penaltyTable: Record<string, number>;
   records: FinancialEngineRecord[];
 }
 

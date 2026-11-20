@@ -33,11 +33,11 @@ def running_count() -> int:
     return sum(1 for job in _jobs.values() if job["status"] == "running")
 
 
-def start_job(tickers: list[str], runner: Callable[[list[str]], Awaitable[dict]]) -> dict:
+def start_job(tickers: list[str], runner: Callable[[list[str]], Awaitable[dict]], year: int | None = None) -> dict:
     _prune()
     job_id = uuid.uuid4().hex
     now = time.time()
-    job = {"scan_id": job_id, "status": "running", "tickers": tickers, "created_at": now, "updated_at": now}
+    job = {"scan_id": job_id, "status": "running", "tickers": tickers, "year": year, "created_at": now, "updated_at": now}
     _jobs[job_id] = job
 
     async def run() -> None:
@@ -65,6 +65,7 @@ def public_view(job: dict) -> dict:
         "scan_id": job["scan_id"],
         "status": job["status"],
         "tickers": job["tickers"],
+        "year": job.get("year"),
         "elapsed_ms": round(((job["updated_at"] if job["status"] != "running" else time.time()) - job["created_at"]) * 1000),
     }
     if "result" in job:

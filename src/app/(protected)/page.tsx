@@ -1,17 +1,16 @@
 import { Activity, AlertTriangle, Building2, TrendingUp } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { AllocationDonut } from "@/components/charts/AllocationDonut";
+import Link from "next/link";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { EsgCard } from "@/components/dashboard/EsgCard";
 import { FinancialHealthCard } from "@/components/dashboard/FinancialHealthCard";
 import { OsintCard } from "@/components/dashboard/OsintCard";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { getOverviews } from "@/lib/overview";
-import { getPortfolio } from "@/lib/api";
-import { formatNumber, formatPct } from "@/lib/format";
+import { getMethodology } from "@/lib/api";
+import { formatPct } from "@/lib/format";
 
 export default async function DashboardPage() {
-  const [items, portfolio] = await Promise.all([getOverviews(), getPortfolio()]);
+  const [items, method] = await Promise.all([getOverviews(), getMethodology()]);
 
   if (items.length === 0) {
     return (
@@ -26,12 +25,7 @@ export default async function DashboardPage() {
   const osintAlerts = items.reduce((n, i) => n + i.events.length, 0);
   const osintTickers = items.filter((i) => i.events.length > 0).map((i) => i.company.ticker);
   const distress = items.filter((i) => i.zscore.zone === "distress").map((i) => i.company.ticker);
-  const realizedGap = portfolio.esgAware.realizedReturn - portfolio.baseline.realizedReturn;
-  const allocation = items.map(({ company: { ticker } }) => ({
-    ticker,
-    weight: portfolio.esgAware.weights[ticker] ?? 0,
-    baselineWeight: portfolio.baseline.weights[ticker],
-  }));
+  const returns = [...items].sort((a, b) => b.company.expectedReturn - a.company.expectedReturn);
 
   return (
     <div className="space-y-5">
@@ -53,26 +47,38 @@ export default async function DashboardPage() {
           tone={distress.length > 0 ? "distress" : "safe"}
         />
         <StatCard
-          label="Lợi suất lịch sử danh mục ESG (một kỳ)"
-          value={formatPct(portfolio.esgAware.realizedReturn)}
-          hint={`${realizedGap > 0 ? "+" : ""}${formatNumber(realizedGap * 100)} điểm % so với danh mục tham chiếu`}
+          label="Năm dữ liệu → năm dự báo"
+          value={`${method.dataYear} → ${method.forecastYear}`}
+          hint="Chỉ số năm trước dùng để dự báo năm sau"
           icon={TrendingUp}
-          tone="safe"
         />
       </div>
 
       {/* Lưới 2×2 */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard
-          title="Phân bổ danh mục ESG-aware"
-          description={`Tỷ trọng tham khảo · ${formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ ${formatPct(portfolio.constraints.maxWeight, 0)}`}
+          title={`Lợi suất kỳ vọng (CAPM ${method.dataYear}) và thực tế ${method.forecastYear}`}
+          description="Thực tế là lợi suất giá điều chỉnh trong năm dự báo – kết quả lịch sử, không phải dự báo"
           action={
-            <Badge variant="secondary" className="h-auto bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-              Kịch bản tham chiếu
-            </Badge>
+            <Link href="/portfolio" className="text-xs font-semibold text-primary hover:underline">
+              Tạo danh mục
+            </Link>
           }
         >
-          <AllocationDonut data={allocation} capital={portfolio.capital} />
+          <table className="w-full text-xs">
+            <thead className="text-muted-foreground">
+              <tr><th className="py-1 text-left font-medium">Mã</th><th className="py-1 text-right font-medium">Rᵢ (CAPM)</th><th className="py-1 text-right font-medium">Thực tế {method.forecastYear}</th></tr>
+            </thead>
+            <tbody className="font-mono tabular-nums">
+              {returns.map(({ company }) => (
+                <tr key={company.ticker} className="border-t">
+                  <td className="py-1 font-sans font-semibold">{company.ticker}</td>
+                  <td className="py-1 text-right">{formatPct(company.expectedReturn)}</td>
+                  <td className="py-1 text-right">{formatPct(company.realizedReturn)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </DashboardCard>
 
         <EsgCard items={items} />

@@ -33,19 +33,18 @@ Container lắng nghe `$PORT` (mặc định 8000); đa số host tự cấp bi�
 | Nhóm | Biến | Bắt buộc? | Ghi chú |
 |---|---|---|---|
 | CORS | `CORS_ORIGINS` | **Có** | Domain frontend, ngăn cách bằng dấu phẩy, không có `/` cuối, vd. `https://<app>.vercel.app`. Preview Vercel có domain khác – thêm nếu cần |
-| OSINT | `FIRECRAWL_API_KEY` | Có (cho OSINT live) | Thiếu → trả sự kiện workbook `DEMO DATA`. Chế độ agent: tới `OSINT_AGENT_MAX_CREDITS` + ≤ 20 trang scrape mỗi mã |
-| OSINT | `OSINT_DISCOVERY` | Không | `agent` (mặc định, Firecrawl Agent) hoặc `search` (4 truy vấn/mã, rẻ hơn) |
+| OSINT | `FIRECRAWL_API_KEY` | Có (cho OSINT live) | Chỉ dùng Firecrawl Agent API. Thiếu → chỉ hiện sự kiện đã duyệt trong workbook. Mỗi lượt quét = 1 job agent/mã/năm, tối đa `OSINT_AGENT_MAX_CREDITS` |
 | OSINT | `OSINT_AGENT_MAX_CREDITS`, `OSINT_AGENT_TIMEOUT_SECONDS` | Không | Trần credit mỗi mã (mặc định 500) và thời gian chờ tối đa (300 s) |
-| OSINT | `OSINT_FIRECRAWL_LIMIT`, `OSINT_LOOKBACK_YEARS` | Không | Mặc định 5 và 3 |
-| OSINT | `OSINT_JINA_FALLBACK`, `JINA_API_KEY` | Không | Jina dự phòng; key chỉ tăng hạn mức |
-| AI | `AI_PROVIDER` + `GROQ_API_KEY` **hoặc** `GEMINI_API_KEY` | Có (cho đề xuất AI) | Thiếu → không có đề xuất, kết quả tìm kiếm vẫn hiện |
+| OSINT | `OSINT_VERIFY_SOURCES` | Không | Mặc định `false`. `true` → đọc lại trang nguồn bằng Firecrawl scrape (1 credit/trang) để kiểm quote, LLM mới đề xuất mức |
+| OSINT | `OSINT_JINA_FALLBACK`, `JINA_API_KEY` | Không | Giữ trong code nhưng không dùng (mặc định `false`) |
+| AI | `AI_PROVIDER` + `GROQ_API_KEY` **hoặc** `GEMINI_API_KEY` | Không | LLM trích xuất PDF (Cổng 2, opt-in) và gợi ý mức OSINT khi `OSINT_VERIFY_SOURCES=true` |
 | AI | `OSINT_AI_PROVIDER`, `GROQ_MODEL`, `GEMINI_MODEL` | Không | |
 | Neo4j | `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `NEO4J_DATABASE` | Không | Production dùng 4 biến này (không dùng `NEO4J_CREDENTIALS_FILE`). Giữ `NEO4J_ALLOW_DEMO_WRITE=false` |
 | Registry | `UNIVERSE_DB_PATH` | Không | SQLite mã `pending_data`. Không có volume → mất khi redeploy; muốn giữ thì mount volume và trỏ vào, vd. `/data/universe.sqlite3` |
 | Registry | `DATA_VERSION`, `METHODOLOGY_VERSION`, `GENERATED_DATA_DIR` | Không | Để mặc định |
 | SSI | `SSI_API_KEY`, `SSI_API_SECRET`, `SSI_API_BASE_URL` | Chưa | Adapter chưa kích hoạt |
 
-Đổi file Excel → `npm run data` → build lại image (dữ liệu nằm trong image).
+Đổi `data/QuantumRegTech_Input_Data_final.xlsx` → `npm run data` → build lại image (dữ liệu nằm trong image).
 
 ## 3. Frontend (Vercel)
 
@@ -57,6 +56,9 @@ Framework preset Next.js, giữ lệnh build mặc định (`prebuild` tự ch�
 | `NEXT_PUBLIC_API_URL` | `https://<backend-domain>` | Không có `/` cuối. Nhúng vào bundle lúc build → đổi thì redeploy |
 | `QUANTUM_API_URL` | (bỏ trống) | Route proxy `/api/*` mặc định dùng `NEXT_PUBLIC_API_URL`; chỉ đặt khi server Vercel gọi backend qua địa chỉ khác |
 | `UNIVERSE_ID` | `demo-v1` | Không bắt buộc |
+| `AUTH_SECRET` | chuỗi ngẫu nhiên | **Bắt buộc** (Auth.js) – mọi trang trừ `/login`, `/signup` cần đăng nhập |
+| `DATABASE_URL` | Neon Postgres | **Bắt buộc** – thiếu thì `next build` fail ("DATABASE_URL must be configured") |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | OAuth Google | Không bắt buộc (đăng nhập Google) |
 
 Không đặt key Firecrawl/Groq/Gemini/Jina/Neo4j/SSI trên Vercel – frontend không dùng tới.
 
@@ -66,8 +68,8 @@ OSINT chạy dạng job: `POST /api/v1/osint/scans` trả `scan_id` ngay (202), 
 
 1. `https://<backend-domain>/health` → `{"status":"ok"}`.
 2. `https://<backend-domain>/api/v1/graph/status` → `state`: `ready`/`ready_empty` nếu kết nối được Neo4j, `unavailable` nếu cấu hình nhưng không kết nối được, `disabled` nếu không cấu hình.
-3. Trang chủ Vercel hiện 4 công ty; `/stocks` gọi `/api/universe` trả 200.
-4. `/company/VNM` → **Run OSINT scan**: `mode=live`, nguồn `firecrawl`. Nếu thấy cảnh báo "Không kết nối được backend OSINT" → sai URL backend hoặc backend đang ngủ.
+3. Trang chủ Vercel hiện 9 công ty (năm dữ liệu 2024 → 2025); `/stocks` gọi `/api/universe` trả 200.
+4. `/portfolio` → chọn mã → **Kiểm tra OSINT** → **Quét OSINT … năm …**: thông báo "Firecrawl Agent – năm …" (tốn credit). Nếu thấy cảnh báo "Không kết nối được backend OSINT" → sai URL backend hoặc backend đang ngủ.
 5. Browser console không có lỗi CORS.
 
 ## 5. Lỗi thường gặp
@@ -75,7 +77,7 @@ OSINT chạy dạng job: `POST /api/v1/osint/scans` trả `scan_id` ngay (202), 
 | Triệu chứng | Nguyên nhân | Xử lý |
 |---|---|---|
 | Vercel build fail `fetch failed` | Backend chưa chạy/URL sai lúc build | Deploy backend trước, kiểm tra `NEXT_PUBLIC_API_URL`, redeploy |
-| OSINT trả `DEMO DATA` | Thiếu `FIRECRAWL_API_KEY` ở backend | Thêm vào secret manager backend, restart |
+| OSINT chỉ hiện sự kiện đã duyệt trong bộ dữ liệu | Thiếu `FIRECRAWL_API_KEY` ở backend hoặc agent lỗi (xem cảnh báo) | Thêm vào secret manager backend, restart |
 | Lỗi CORS trong console | `CORS_ORIGINS` thiếu domain frontend | Thêm đúng origin (có `https://`, không `/` cuối) |
 | Mã mới đăng ký biến mất | SQLite không nằm trên volume | Mount volume, đặt `UNIVERSE_DB_PATH` |
 | Số liệu trang cũ sau khi cập nhật backend | Trang prerender lúc build | Redeploy frontend |

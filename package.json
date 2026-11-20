@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "data": "node scripts/build-data.mjs && node scripts/build-financial-engine-data.mjs",
+    "data": "node scripts/build-financial-engine-data.mjs && node scripts/build-data.mjs",
     "assets": "node scripts/copy-ocr-assets.mjs",
     "postinstall": "npm run data && npm run assets",
     "predev": "npm run data && npm run assets",

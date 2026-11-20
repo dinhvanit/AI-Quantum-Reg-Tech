@@ -20,8 +20,6 @@ export function PrivateResult({ result }: { result: PrivateAnalysis }) {
   const { company, zscore, esg, events, posint } = result;
   const total =
     typeof zscore.rfinBase === "number" && typeof posint === "number" ? zscore.rfinBase + posint : "TODO";
-  const isSample = result.source === "sample";
-  const hasTodo = isSample && [zscore.z, esg.esgScore, zscore.rfinBase].some((v) => v === "TODO");
   const endYear = typeof company.fiscalYear === "number" ? company.fiscalYear : new Date().getFullYear();
 
   return (
@@ -45,23 +43,13 @@ export function PrivateResult({ result }: { result: PrivateAnalysis }) {
         </DashboardCard>
       )}
 
-      {!isSample && (
+      {(
         <Alert>
           <Info />
           <AlertTitle>Phạm vi tự động của bản hiện tại</AlertTitle>
           <AlertDescription>
             Z&apos;-Score tính từ số liệu trích trong báo cáo. Điểm ESG và quét OSINT chưa tự động (Vòng 2) nên hiển thị “—”;
             RFin,Total chỉ có khi đã có POSINT.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {hasTodo && (
-        <Alert>
-          <Info />
-          <AlertTitle>Chưa có số liệu được xác nhận</AlertTitle>
-          <AlertDescription>
-            Hồ sơ này chưa có báo cáo tài chính được cung cấp. Các ô chưa có dữ liệu hiển thị “—” và không được tự tạo.
           </AlertDescription>
         </Alert>
       )}

@@ -15,7 +15,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
   const session = await auth();
   if (session) redirect("/");
   const params = await searchParams;
-  const error = params?.error ? errors[params.error] : undefined;
+  const error = typeof params?.error === "string" ? errors[params.error] : undefined;
 
   return (
     <div className="flex min-h-dvh items-center justify-center px-4 py-10">

@@ -48,9 +48,9 @@ Luồng PDF hiện là nhánh thẩm định riêng. Kết quả PDF **chưa đ�
 
 1. Chỉ ra Altman Z/zone, ESGi, các ô đang thiếu, timeline OSINT và công thức `RFin base + POSINT = RFin total`.
 2. Bấm `Run OSINT scan`.
-3. Backend gửi 4 truy vấn Firecrawl theo nhóm sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính) trong `OSINT_LOOKBACK_YEARS` năm, scrape nội dung bài và gộp trùng URL. Jina Reader đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được. Kết quả không có nội dung không được gửi cho LLM.
-4. Nếu Gemini/Groq đã cấu hình, AI đề xuất loại/mức sự kiện, độ tin cậy tự đánh giá và câu trích dẫn. Câu trích chỉ được giữ nếu khớp nguyên văn excerpt.
-5. Reviewer mở nguồn và quyết định; nút duyệt chỉ là preview trong phiên. Chưa có audit log bền vững hoặc cập nhật POSINT chính thức. Khi không có kết quả live, ứng dụng dùng workbook kèm nhãn `DEMO DATA`/`Already in assessment`.
+3. Backend chạy 1 job Firecrawl Agent cho mã đó với prompt một câu theo năm dữ liệu ("… trong năm 2024"). Sự kiện đã duyệt trong workbook năm đó hiện ở mục riêng và đã được tính.
+4. Người dùng mở nguồn của từng sự kiện mới, bấm "Chấp nhận mức 1/2/3" hoặc "Bỏ". P_OSINT = mức cao nhất theo bảng Params (không cộng dồn); R_fin,total cập nhật trong phiên.
+5. Chưa có audit log bền vững hoặc ghi vào hồ sơ chính thức. Thiếu key/FastAPI → chỉ hiện sự kiện đã duyệt trong workbook.
 
 **Cách diễn giải MCM:** dữ liệu demo có bài báo phản ánh nguy cơ môi trường. Không gọi đây là quyết định xử phạt đã xác nhận. POSINT `+0.10` là giá trị đang được giữ trong workbook theo quyết định nội bộ đã ghi ở `docs/DATA.md`; không tự suy rộng thành quy tắc pháp lý.
 

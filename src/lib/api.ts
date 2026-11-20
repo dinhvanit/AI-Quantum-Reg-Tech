@@ -3,9 +3,6 @@ import companies from "@data/companies.json";
 import zscore from "@data/zscore.json";
 import esg from "@data/esg.json";
 import osintEvents from "@data/osint_events.json";
-import portfolio from "@data/portfolio.json";
-import scenarios from "@data/scenarios.json";
-import privateSample from "@data/private_sample.json";
 import methodology from "@data/methodology.json";
 import esgIndicators from "@data/esg_indicators.json";
 import type {
@@ -15,10 +12,8 @@ import type {
   ExtractedField,
   Methodology,
   OsintEvent,
-  PortfolioResult,
   PrivateAnalysis,
   PrivateStage,
-  Scenario,
   Ticker,
   ZScore,
 } from "./types";
@@ -62,11 +57,6 @@ export async function getOsintEvents(ticker: Ticker, months = 36): Promise<Osint
   return getJson(`/api/v1/companies/${ticker}/osint?months=${months}`);
 }
 
-export async function getPortfolio(): Promise<PortfolioResult> {
-  if (USE_MOCK) { await delay(800); return portfolio as PortfolioResult; }
-  return getJson("/api/v1/portfolio/optimize", { method: "POST" });
-}
-
 /** 32 chỉ tiêu ESG công bố (năm 2024) của các DN – nền cho mức độ công bố theo trụ cột E / S / G. */
 export async function getEsgIndicators(): Promise<EsgIndicatorSet> {
   if (USE_MOCK) { await delay(150); return esgIndicators as EsgIndicatorSet; }
@@ -77,12 +67,6 @@ export async function getEsgIndicators(): Promise<EsgIndicatorSet> {
 export async function getMethodology(): Promise<Methodology> {
   if (USE_MOCK) return methodology as Methodology;
   return getJson("/api/v1/methodology");
-}
-
-/** Kịch bản tham số tính sẵn cho slider (chỉ có ở chế độ mock). */
-export async function getScenarios(): Promise<Scenario[]> {
-  if (USE_MOCK) { await delay(200); return scenarios as Scenario[]; }
-  return getJson("/api/v1/scenarios");
 }
 
 export const PRIVATE_STAGES: { id: PrivateStage; label: string }[] = [
@@ -102,7 +86,7 @@ const aborted = (signal?: AbortSignal) => {
  * Cổng 2 – phân tích hồ sơ DN chưa niêm yết.
  * PDF gốc luôn đọc/OCR trong trình duyệt. Phần text chỉ gửi tới LLM nếu người dùng bật useLlm riêng.
  * - PDF: đọc lớp chữ / OCR trang scan → trích 9 chỉ tiêu BCTC → tính Z'. OSINT, ESG chưa tự động (Vòng 2).
- * - Excel: chưa hỗ trợ trích xuất → trả kết quả mẫu (sheet Private_Sample).
+ * - Excel: chưa hỗ trợ trích xuất → báo lỗi rõ ràng (không trả kết quả mẫu).
  */
 export async function analyzePrivate(
   file: File,
@@ -187,7 +171,6 @@ export async function analyzePrivate(
     await delay(500);
     aborted(signal);
 
-    const sample = privateSample as Omit<PrivateAnalysis, "deletedAt" | "source">;
     return {
       company: {
         name: parsed.companyName ?? file.name.replace(/\.pdf$/i, ""),
@@ -196,7 +179,7 @@ export async function analyzePrivate(
         fiscalYear: parsed.fiscalYear ?? "TODO",
       },
       zscore,
-      esg: { ...sample.esg, esgScore: "TODO", greenwashingRisk: "TODO", evidence: [] },
+      esg: { esgScore: "TODO", pillars: { E: "TODO", S: "TODO", G: "TODO", transparency: "TODO", compliance: "TODO" }, greenwashingRisk: "TODO", evidence: [] },
       events: [],
       posint: "TODO",
       source: "document",
@@ -214,15 +197,5 @@ export async function analyzePrivate(
     };
   }
 
-  for (const { id } of PRIVATE_STAGES) {
-    aborted(signal);
-    onStage?.(id);
-    await delay(800 + Math.random() * 400);
-  }
-  aborted(signal);
-  return {
-    ...(privateSample as Omit<PrivateAnalysis, "deletedAt" | "source">),
-    source: "sample",
-    deletedAt: new Date().toISOString(),
-  };
+  throw new Error("Chưa hỗ trợ trích xuất từ Excel. Hãy tải báo cáo tài chính dạng PDF.");
 }

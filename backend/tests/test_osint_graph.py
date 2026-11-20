@@ -18,11 +18,6 @@ ARTICLE = (
 )
 
 
-def test_search_name_strips_company_prefix():
-    assert og.search_name({"name": "CTCP Sữa Việt Nam"}) == "Sữa Việt Nam"
-    assert og.search_name({"name": "Tổng CTCP Bia - Rượu - Nước giải khát Sài Gòn"}) == "Bia - Rượu - Nước giải khát Sài Gòn"
-
-
 def test_build_excerpt_keeps_penalty_paragraph_and_strips_markdown():
     excerpt = og.build_excerpt(ARTICLE, "", "VNM", "Sữa Việt Nam")
     assert "quyết định xử phạt CTCP Sữa Việt Nam" in excerpt
@@ -42,20 +37,38 @@ def test_external_url_blocks_private_hosts():
         assert og._external_url(url) is None
 
 
-def test_lookback_tbs_uses_custom_range(monkeypatch):
-    monkeypatch.setenv("OSINT_LOOKBACK_YEARS", "2")
-    assert og._lookback_tbs().startswith("cdr:1,cd_min:")
+ENGINE = {
+    "tickers": ["VNM", "KDC"],
+    "companies": {"VNM": {"name": "CTCP Sữa Việt Nam"}, "KDC": {"name": "CTCP Tập đoàn KIDO"}},
+    "osintEvents": [{"ticker": "KDC", "entity": "Tập đoàn Kido", "decisionYear": 2023, "forecastYear": 2024, "level": 2,
+                     "summary": "Phạt thuế 3.2 tỷ", "sourceUrl": "https://vnbusiness.vn/kido-phat-thue", "dateNote": "10/2023"}],
+}
 
 
-def test_discover_without_key_falls_back_to_workbook(monkeypatch):
-    monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
-    monkeypatch.setattr(og, "_read_json", lambda name: [{"ticker": "VNM", "name": "CTCP Sữa Việt Nam"}] if name == "companies.json" else [
-        {"ticker": "VNM", "title": "Sự kiện mẫu", "source": "Workbook", "url": "https://example.vn/a", "active": True, "penalty": 0.1, "date": "2022-TODO"},
-    ])
-    result = asyncio.run(og.discover({"tickers": ["VNM"]}))
-    assert result["mode"] == "demo"
-    assert result["findings"][0]["demo"] is True
+def _fake_read_json(name):
+    if name == "companies.json":
+        return [{"ticker": "VNM", "name": "Vinamilk (tên cũ)"}]
+    if name == "financial_engine.json":
+        return ENGINE
+    raise AssertionError(f"unexpected data file {name}")
+
+
+def test_agent_prompt_is_one_sentence_for_one_year():
+    assert og.agent_prompt("VNM", "CTCP Sữa Việt Nam", 2024) == (
+        "Tìm các sự kiện doanh nghiệp CTCP Sữa Việt Nam (mã VNM) bị cơ quan nhà nước xử phạt, truy thu hoặc kết luận vi phạm trong năm 2024"
+    )
+
+
+def test_discover_without_key_returns_reviewed_workbook_events(monkeypatch):
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "")
+    monkeypatch.setattr(og, "_read_json", _fake_read_json)
+    result = asyncio.run(og.discover({"tickers": ["KDC"], "year": 2023}))
+    assert result["mode"] == "workbook"
+    [event] = result["findings"]
+    assert event["reviewed"] is True and event["alreadyInAssessment"] is True and event["penaltyLevel"] == 2
     assert any("FIRECRAWL_API_KEY" in warning for warning in result["warnings"])
+    # Another year: reviewed events of 2023 do not apply.
+    assert asyncio.run(og.discover({"tickers": ["KDC"], "year": 2024}))["findings"] == []
 
 
 class _FakeStructured:
@@ -81,56 +94,7 @@ class _FakeNeo4j:
         return {"available": True, "matched": False, "company": None, "events": []}
 
 
-def test_full_graph_firecrawl_search_mode(monkeypatch):
-    """discover → graph_enrichment → extract → classify → validate with fake providers."""
-    calls: list[dict] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "api.firecrawl.dev":
-            body = json.loads(request.content)
-            calls.append(body)
-            assert "OR" not in body["query"].split()  # Firecrawl has no OR operator
-            assert body["sources"] == [{"type": "web"}]
-            web = [{"url": "https://baomoi.vn/vnm-bi-phat", "title": "VNM bị phạt thuế", "description": "", "markdown": ARTICLE}]
-            if "môi trường" in body["query"]:
-                web.append({"url": "https://tin.vn/khong-noi-dung", "title": "Tin chỉ có tiêu đề", "description": "", "markdown": ""})
-            return httpx.Response(200, json={"success": True, "data": {"web": web}})
-        if request.url.host == "r.jina.ai":
-            return httpx.Response(200, text="Bài viết về chương trình sữa học đường, không có nội dung xử phạt nào cả.", headers={"content-type": "text/plain"})
-        raise AssertionError(f"unexpected request {request.url}")
-
-    real_client = httpx.AsyncClient
-    monkeypatch.setattr(og.httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **{k: v for k, v in kwargs.items() if k != "transport"}))
-    monkeypatch.setenv("FIRECRAWL_API_KEY", "test-key")
-    monkeypatch.setenv("OSINT_DISCOVERY", "search")
-    monkeypatch.setenv("AI_PROVIDER", "groq")
-    monkeypatch.setattr(og, "_read_json", lambda name: [{"ticker": "VNM", "name": "CTCP Sữa Việt Nam"}])
-    import app.services.neo4j as neo4j_module
-    monkeypatch.setattr(neo4j_module, "get_neo4j_service", lambda: _FakeNeo4j())
-
-    model = _FakeModel([
-        og.Proposal(index=0, related=True, event_type="tax", severity=2, confidence=0.8,
-                    evidence_quote="quyết định xử phạt CTCP Sữa Việt Nam (VNM) số tiền 1,2 tỷ đồng"),
-        og.Proposal(index=1, related=True, event_type="environment", severity=3, confidence=0.9,
-                    evidence_quote="câu bịa không có trong bài"),
-    ])
-    monkeypatch.setattr(og, "_chat_model", lambda provider: ("fake-model", model))
-
-    result = asyncio.run(og.run_osint_graph(["VNM"]))
-
-    assert len(calls) == len(og.PENALTY_QUERIES)
-    assert result["mode"] == "live"
-    assert result["providers"] == ["firecrawl", "jina-reader"]
-    assert result["search"]["queries"] == 4
-    assert len(result["findings"]) == 2  # same URL from 4 queries is deduplicated
-    grounded, ungrounded = result["findings"]
-    assert grounded["aiProposal"]["severity"] == 2 and grounded["proposedPenalty"] == 0.1
-    assert ungrounded["readerProvider"] == "jina-reader"
-    assert ungrounded["aiProposal"]["severity"] is None and ungrounded["proposedPenalty"] is None
-    assert result["ai"]["validated_quote_count"] == 1
-
-
-@pytest.mark.parametrize("mode", ["demo"])
+@pytest.mark.parametrize("mode", ["workbook"])
 def test_classify_skips_workbook_fallback(mode):
     result = asyncio.run(og.classify({"mode": mode, "findings": [{"title": "x", "demo": True}]}))
     assert result["ai"]["mode"] == "skipped"
@@ -144,11 +108,40 @@ def _agent_env(monkeypatch, handler):
     monkeypatch.setattr(og.httpx, "AsyncClient", lambda **kwargs: real_client(transport=httpx.MockTransport(handler), **{k: v for k, v in kwargs.items() if k != "transport"}))
     monkeypatch.setattr(og, "AGENT_POLL_SECONDS", 0)
     monkeypatch.setenv("FIRECRAWL_API_KEY", "test-key")
-    monkeypatch.delenv("OSINT_DISCOVERY", raising=False)  # agent is the default
+    monkeypatch.delenv("OSINT_VERIFY_SOURCES", raising=False)
+    monkeypatch.delenv("OSINT_JINA_FALLBACK", raising=False)
     monkeypatch.setenv("AI_PROVIDER", "groq")
-    monkeypatch.setattr(og, "_read_json", lambda name: [{"ticker": "VNM", "name": "CTCP Sữa Việt Nam"}])
+    monkeypatch.setattr(og, "_read_json", _fake_read_json)
     import app.services.neo4j as neo4j_module
     monkeypatch.setattr(neo4j_module, "get_neo4j_service", lambda: _FakeNeo4j())
+
+
+def test_agent_only_by_default_no_scrape_and_no_ai_severity(monkeypatch):
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if request.url.path == "/v2/agent":
+            body = json.loads(request.content)
+            assert body["prompt"].endswith("trong năm 2023") and "CTCP Tập đoàn KIDO (mã KDC)" in body["prompt"]
+            return httpx.Response(200, json={"success": True, "id": JOB_ID})
+        if request.url.path == f"/v2/agent/{JOB_ID}":
+            return httpx.Response(200, json={"success": True, "status": "completed", "creditsUsed": 120, "data": {"events": [
+                {"title": "Kido bị phạt thuế", "url": "https://www.vnbusiness.vn/kido-phat-thue/", "category": "tax", "quote": "phạt 3,2 tỷ"},
+                {"title": "Kido bị phạt chứng khoán", "url": "https://ssc.gov.vn/kdc", "category": "securities", "quote": "phạt 117 triệu"},
+            ]}})
+        raise AssertionError(f"unexpected request {request.url}")
+
+    _agent_env(monkeypatch, handler)
+    monkeypatch.setattr(og, "_chat_model", lambda provider: (_ for _ in ()).throw(AssertionError("LLM must not run without source text")))
+    result = asyncio.run(og.run_osint_graph(["KDC"], 2023))
+    assert "/v2/scrape" not in calls
+    assert result["mode"] == "live" and result["year"] == 2023 and result["providers"] == ["firecrawl-agent"]
+    known, new, reviewed = result["findings"]
+    assert known["alreadyInAssessment"] is True  # same source as the reviewed workbook event
+    assert new["status"] == "Needs review" and new["agentClaim"]["quoteVerified"] is False and "aiProposal" not in new
+    assert reviewed["sourceProvider"] == "workbook" and reviewed["reviewed"] is True
+    assert result["ai"]["mode"] == "skipped"
 
 
 def test_full_graph_agent_mode_verifies_quotes_against_source(monkeypatch):
@@ -179,6 +172,7 @@ def test_full_graph_agent_mode_verifies_quotes_against_source(monkeypatch):
         raise AssertionError(f"unexpected request {request.url}")
 
     _agent_env(monkeypatch, handler)
+    monkeypatch.setenv("OSINT_VERIFY_SOURCES", "true")
     model = _FakeModel([
         og.Proposal(index=0, related=True, event_type="tax", severity=2, confidence=0.8,
                     evidence_quote="quyết định xử phạt CTCP Sữa Việt Nam (VNM) số tiền 1,2 tỷ đồng"),
@@ -187,12 +181,12 @@ def test_full_graph_agent_mode_verifies_quotes_against_source(monkeypatch):
     ])
     monkeypatch.setattr(og, "_chat_model", lambda provider: ("fake-model", model))
 
-    result = asyncio.run(og.run_osint_graph(["VNM"]))
+    result = asyncio.run(og.run_osint_graph(["VNM"], 2024))
 
     start = calls["start"][0]
     assert start["schema"]["properties"]["events"]["items"]["required"] == ["title", "url", "category", "quote"]
     assert start["location"] == {"country": "VN"} and start["maxCredits"] == 500
-    assert "VNM" in start["prompt"] and "Sữa Việt Nam" in start["prompt"]
+    assert start["prompt"] == og.agent_prompt("VNM", "CTCP Sữa Việt Nam", 2024)
     assert result["mode"] == "live" and result["discovery"] == "agent"
     assert result["providers"] == ["firecrawl-agent", "firecrawl-scrape"]
     assert result["search"]["credits_used"] == 180 and result["search"]["agent_quotes_verified"] == 1
@@ -213,12 +207,10 @@ def test_agent_credit_stop_uses_partial(monkeypatch):
         raise AssertionError(f"unexpected request {request.url}")
 
     _agent_env(monkeypatch, handler)
-    monkeypatch.setattr(og, "_read_json", lambda name: [{"ticker": "VNM", "name": "CTCP Sữa Việt Nam"}] if name == "companies.json" else [])
-    result = asyncio.run(og.discover({"tickers": ["VNM"]}))
+    result = asyncio.run(og.discover({"tickers": ["VNM"], "year": 2024}))
     assert result["search"]["runs"][0]["status"] == "partial"
     assert any("OSINT_AGENT_MAX_CREDITS" in w for w in result["warnings"])
-    # partial run is not "completed" and found nothing → honest workbook fallback with label
-    assert result["mode"] == "demo"
+    assert result["mode"] == "live" and result["findings"] == []
 
 
 def test_agent_failure_reports_warning(monkeypatch):
@@ -226,9 +218,8 @@ def test_agent_failure_reports_warning(monkeypatch):
         return httpx.Response(402, json={"error": "Payment required"})
 
     _agent_env(monkeypatch, handler)
-    monkeypatch.setattr(og, "_read_json", lambda name: [{"ticker": "VNM", "name": "CTCP Sữa Việt Nam"}] if name == "companies.json" else [])
-    result = asyncio.run(og.discover({"tickers": ["VNM"]}))
-    assert result["mode"] == "demo"
+    result = asyncio.run(og.discover({"tickers": ["VNM"], "year": 2024}))
+    assert result["mode"] == "workbook"
     assert any("402" in w and "hết credit" in w for w in result["warnings"])
 
 
@@ -265,6 +256,6 @@ def test_agent_completed_without_events_is_honest_empty_live(monkeypatch):
         return httpx.Response(200, json={"success": True, "status": "completed", "creditsUsed": 90, "data": {"events": []}})
 
     _agent_env(monkeypatch, handler)
-    result = asyncio.run(og.discover({"tickers": ["VNM"]}))
+    result = asyncio.run(og.discover({"tickers": ["VNM"], "year": 2024}))
     assert result["mode"] == "live" and result["findings"] == []
     assert any("không tìm thấy" in w for w in result["warnings"])

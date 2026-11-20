@@ -7,10 +7,10 @@ import { ZoneBadge } from "@/components/dashboard/ZoneBadge";
 import { PrintButton } from "@/components/report/PrintButton";
 import { ReportSection } from "@/components/report/ReportSection";
 import { buttonVariants } from "@/components/ui/button";
-import { getCompanies, getEsgIndicators, getMethodology, getPortfolio } from "@/lib/api";
+import { getCompanies, getEsgIndicators, getMethodology } from "@/lib/api";
 import { PILLARS, pillarDisclosure } from "@/lib/esg";
 import { assess } from "@/lib/assessment";
-import { formatBillion, formatEventDate, formatNumber, formatPct, formatText } from "@/lib/format";
+import { formatEventDate, formatNumber, formatPct, formatText } from "@/lib/format";
 import { getOverview } from "@/lib/overview";
 import { GREENWASHING_LABEL, OSINT_TYPE_LABEL, ZONE_CLASS } from "@/lib/risk";
 import { cn } from "@/lib/utils";
@@ -26,9 +26,8 @@ export async function generateMetadata(props: PageProps<"/report/[ticker]">) {
 
 export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
   const { ticker } = await props.params;
-  const [overview, portfolio, method, companies, esgSet] = await Promise.all([
+  const [overview, method, companies, esgSet] = await Promise.all([
     getOverview(ticker),
-    getPortfolio(),
     getMethodology(),
     getCompanies(),
     getEsgIndicators(),
@@ -37,9 +36,6 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
 
   const { company, zscore, esg, allEvents, posint, rfinTotal } = overview;
   const a = assess(overview);
-  const w = portfolio.esgAware.weights[company.ticker];
-  const wBase = portfolio.baseline.weights[company.ticker];
-  const atFloor = w !== undefined && Math.abs(w - portfolio.constraints.minWeight) < 1e-9;
   const today = new Intl.DateTimeFormat("vi-VN", { dateStyle: "long" }).format(new Date());
 
   return (
@@ -165,10 +161,8 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
 
         <ReportSection n={6} title="Khuyến nghị tỷ trọng">
           <p>
-            Danh mục có tính đến ESG ({formatBillion(portfolio.capital, 0)} VNĐ) phân bổ{" "}
-            <span className="font-mono font-bold">{formatPct(w, 1)}</span> ({formatBillion(w === undefined ? undefined : w * portfolio.capital)})
-            cho {company.ticker}
-            {atFloor && " – mức sàn theo ràng buộc"}; Danh mục cân bằng Markowitz: <span className="font-mono">{formatPct(wBase, 1)}</span>.
+            Không có tỷ trọng cố định cho {company.ticker}: tỷ trọng phụ thuộc các mã nhà đầu tư chọn và mức ưu tiên ở trang{" "}
+            <Link href="/portfolio" className="underline">Tạo danh mục</Link> (dữ liệu năm {method.dataYear}, so với lợi suất thực tế năm {method.forecastYear}).
           </p>
         </ReportSection>
 
@@ -182,9 +176,7 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
               <span className="font-mono">{method.altman}</span> – {method.altmanZones}.
             </li>
             <li>Điểm phạt POSINT: {method.posintTiers}.</li>
-            <li>
-              Ràng buộc tỷ trọng: {formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ {formatPct(portfolio.constraints.maxWeight, 0)}, Σwᵢ = 100%.
-            </li>
+            <li>Nguồn: {method.dataSource}.</li>
             <li>Trường dữ liệu chưa được xác nhận hiển thị bằng “—”.</li>
           </ul>
         </ReportSection>

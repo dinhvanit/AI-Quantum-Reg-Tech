@@ -2,7 +2,7 @@
 
 **Status:** Draft for product/design review
 **Date:** 2026-11-19
-**Source of truth:** `data/QuantumRegTech_Data.xlsx`, `docs/DATA.md`, and documented decisions below. The coding-agent packet informs future behavior but does not override workbook decisions.
+**Source of truth:** `data/QuantumRegTech_Input_Data_final.xlsx`, `docs/DATA.md`, and documented decisions below. The coding-agent packet informs future behavior but does not override workbook decisions.
 
 **Review/demo aids:** [User flows](../../docs/USER_FLOWS.md) · [Demo runbook](../../docs/DEMO_RUNBOOK.md)
 

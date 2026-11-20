@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const ACCEPTED = [".pdf", ".xlsx", ".xls"];
+export const ACCEPTED = [".pdf"];
 export const MAX_BYTES = 20 * 1024 * 1024;
 
 export function validateFile(file: File): string | null {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-  if (!ACCEPTED.includes(ext)) return `Định dạng ${ext || "không rõ"} không được hỗ trợ. Chỉ nhận PDF hoặc Excel (.xlsx, .xls).`;
+  if (!ACCEPTED.includes(ext)) return `Định dạng ${ext || "không rõ"} không được hỗ trợ. Hiện chỉ nhận báo cáo tài chính PDF.`;
   if (file.size > MAX_BYTES) return `Tệp ${formatBytes(file.size)} vượt giới hạn ${formatBytes(MAX_BYTES)}.`;
   if (file.size === 0) return "Tệp rỗng.";
   return null;
@@ -60,7 +60,7 @@ export function Dropzone({ file, onChange }: { file: File[]; onChange: (file: Fi
         <UploadCloud className={cn("size-8", dragging ? "text-primary" : "text-muted-foreground")} />
         <p className="text-sm font-medium">Kéo thả hồ sơ vào đây hoặc bấm để chọn tệp</p>
         <p className="text-xs text-muted-foreground">
-          Báo cáo tài chính PDF (có lớp chữ hoặc bản scan) · Excel: dùng kết quả mẫu · tối đa {formatBytes(MAX_BYTES)}
+          Báo cáo tài chính PDF (có lớp chữ hoặc bản scan) · tối đa {formatBytes(MAX_BYTES)}
         </p>
       </button>
       <input

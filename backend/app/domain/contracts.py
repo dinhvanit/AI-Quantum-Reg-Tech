@@ -40,6 +40,8 @@ class RegisterCompany(BaseModel):
 
 class OsintScanRequest(BaseModel):
     tickers: list[str] = Field(min_length=1, max_length=4)
+    # Data year t: the agent looks for events decided in t (they feed the forecast for t+1).
+    year: int = Field(ge=2000, le=2100)
 
 
 class DocumentLine(BaseModel):

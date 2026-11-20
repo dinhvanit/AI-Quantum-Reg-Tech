@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import re
+from datetime import date
+from functools import partial
 
 from fastapi import APIRouter, HTTPException
 
 from app.domain.contracts import OsintScanRequest
-from app.repositories.workbook import workbook_companies
+from app.repositories.workbook import load_data_file, workbook_companies
 from app.services import osint_jobs
 
 
@@ -19,6 +21,12 @@ MAX_RUNNING_SCANS = 3  # each scan can spend Firecrawl credits; bound concurrent
 async def create_osint_scan(body: OsintScanRequest) -> dict:
     """Start a scan in the background; poll GET /api/v1/osint/scans/{scan_id} for the result."""
     available = {item["ticker"].upper() for item in workbook_companies()}
+    try:
+        available |= {ticker.upper() for ticker in load_data_file("financial_engine.json").get("tickers", [])}
+    except HTTPException:
+        pass
+    if body.year > date.today().year:
+        raise HTTPException(status_code=422, detail="Năm quét không được lớn hơn năm hiện tại.")
     tickers = list(dict.fromkeys(ticker.strip().upper() for ticker in body.tickers))
     if any(not TICKER_RE.fullmatch(ticker) for ticker in tickers):
         raise HTTPException(status_code=422, detail="Ticker may contain A-Z, 0-9, dot, or hyphen")
@@ -29,7 +37,7 @@ async def create_osint_scan(body: OsintScanRequest) -> dict:
         raise HTTPException(status_code=429, detail="Đang có quá nhiều lượt quét OSINT chạy; thử lại sau.")
     from app.agents.osint_graph import run_osint_graph
 
-    return osint_jobs.start_job(tickers, run_osint_graph)
+    return osint_jobs.start_job(tickers, partial(run_osint_graph, year=body.year), year=body.year)
 
 
 @router.get("/api/v1/osint/scans/{scan_id}")

@@ -107,15 +107,13 @@ Trong Google Cloud Console, thêm `http://localhost:3000/api/auth/callback/googl
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `CORS_ORIGINS` | `http://localhost:3000,…` | Origin frontend được phép gọi; production thêm domain Vercel |
-| `FIRECRAWL_API_KEY` | *(không có)* | **Nguồn OSINT duy nhất** (Agent hoặc search, xem `OSINT_DISCOVERY`). Thiếu key → hiển thị sự kiện workbook (`DEMO DATA`) |
-| `OSINT_FIRECRAWL_LIMIT` | `5` | Số kết quả mỗi truy vấn (1–10). Credit/mã ≈ 4 × (2 + giá trị này) |
-| `OSINT_LOOKBACK_YEARS` | `3` | Khoảng thời gian tìm kiếm (năm) |
-| `OSINT_DISCOVERY` | `agent` | `agent`: Firecrawl Agent (vài phút, tới `OSINT_AGENT_MAX_CREDITS`=500 credit/mã, chờ tối đa `OSINT_AGENT_TIMEOUT_SECONDS`=300 s); `search`: 4 truy vấn/mã |
-| `OSINT_JINA_FALLBACK` / `JINA_API_KEY` | `true` / *(không bắt buộc)* | Jina Reader đọc nội dung khi Firecrawl không đọc được trang; key chỉ tăng hạn mức |
-| `AI_PROVIDER` (+ `OSINT_AI_PROVIDER`) + provider key | *(không có)* | Chọn `groq` hoặc `gemini` để tạo đề xuất phân loại; `OSINT_AI_PROVIDER` ghi đè riêng cho OSINT; key giữ ở server |
+| `FIRECRAWL_API_KEY` | *(không có)* | **Nguồn OSINT duy nhất – chỉ Firecrawl Agent API** (1 job/mã/năm, vài phút, tới `OSINT_AGENT_MAX_CREDITS`=500 credit, chờ tối đa `OSINT_AGENT_TIMEOUT_SECONDS`=300 s). Thiếu key → chỉ hiện sự kiện đã duyệt trong workbook |
+| `OSINT_VERIFY_SOURCES` | `false` | `true`: đọc lại trang nguồn (Firecrawl scrape, 1 credit/trang) để kiểm quote của agent và cho LLM gợi ý mức |
+| `OSINT_JINA_FALLBACK` / `JINA_API_KEY` | `false` / *(không dùng)* | Giữ trong code, không dùng |
+| `AI_PROVIDER` (+ `OSINT_AI_PROVIDER`) + provider key | *(không có)* | `groq`/`gemini`: trích xuất PDF opt-in (Cổng 2) và gợi ý mức OSINT khi bật `OSINT_VERIFY_SOURCES`; key giữ ở server |
 | `NEO4J_CREDENTIALS_FILE` hoặc `NEO4J_URI` + `NEO4J_USERNAME` + `NEO4J_PASSWORD` | *(không có)* | Kết nối read-only graph context cho agent OSINT |
 
-CAPM, price-period return, Altman Z/X1–X5 và RFin base được tính lại từ đầu vào workbook, có đối chiếu công thức Excel. OSINT chạy qua LangGraph (FastAPI), dùng Firecrawl Agent tìm sự kiện xử phạt (đọc lại trang nguồn để kiểm quote của agent), Jina Reader làm dự phòng đọc nội dung và Gemini/Groq qua LangChain để đề xuất phân loại có bằng chứng; mọi finding vẫn cần reviewer, chưa có audit bền vững hay cập nhật POSINT chính thức. Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Portfolio slider vẫn chọn kịch bản dựng sẵn, chưa chạy optimizer covariance hoặc QAOA.
+Nguồn dữ liệu duy nhất là `data/QuantumRegTech_Input_Data_final.xlsx` (9 mã, năm dữ liệu 2021–2024 → dự báo 2022–2025). CAPM, lợi suất thực tế, Altman Z/X1–X5, R_fin, P_OSINT và ESG được tính lại từ ô số gốc và đối chiếu với kết quả công thức của workbook. OSINT chạy qua LangGraph (FastAPI) và chỉ dùng Firecrawl Agent với prompt một câu theo năm dữ liệu; sự kiện đã duyệt trong workbook dùng thẳng, sự kiện mới phải được người dùng chấp nhận và chọn mức (chỉ trong phiên). Cổng PDF dùng OCR/parser cục bộ làm baseline; nếu người dùng opt-in, LangGraph + LangChain LLM trích xuất ngữ nghĩa và chỉ chấp nhận số có quote/trang nguồn khớp. PDF gốc không gửi lên LLM. Chưa có RAG, xử lý xuyên nhiều tài liệu hoặc lưu trường đã duyệt. Trang danh mục phân bổ theo mức ưu tiên cho năm dữ liệu đã chọn và đối chiếu với lợi suất thực tế năm sau; chưa có optimizer covariance hoặc QAOA.
 
 Sao chép `.env.example` → `.env.local` và `backend/.env.example` → `backend/.env`. Không thay toàn bộ file hiện có nếu trong đó đã có key; chỉ thêm các dòng còn thiếu và khởi động lại Next.js/FastAPI sau khi sửa. Máy đang để mọi key trong `.env.local` ở root vẫn chạy (FastAPI đọc file này làm fallback), nhưng nên chuyển key dịch vụ sang `backend/.env`.
 
