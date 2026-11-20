@@ -20,7 +20,7 @@ export function GreenwashingEvidence({ evidence }: { evidence: EsgEvidence[] }) 
         <div>
           <p className="font-medium">Chưa có cặp bằng chứng đối chiếu</p>
           <p className="text-muted-foreground">
-            Chưa ghi nhận mâu thuẫn giữa tuyên bố của doanh nghiệp và dữ liệu ngoại cảnh trong bộ dữ liệu mẫu.
+            Chưa ghi nhận mâu thuẫn giữa tuyên bố của doanh nghiệp và dữ liệu ngoại cảnh hiện có.
           </p>
         </div>
       </div>

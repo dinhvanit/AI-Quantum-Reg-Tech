@@ -12,16 +12,15 @@ import { formatNumber, formatPct } from "@/lib/format";
 import type { CompanyOverview } from "@/lib/overview";
 import { usePortfolioStore } from "@/store/portfolio";
 
-const DEMO_TICKERS = ["VNM", "SAB", "MCM", "SBT"];
-
 export function StockUniverse({ items }: { items: CompanyOverview[] }) {
+  const portfolioTickers = items.map((item) => item.company.ticker);
   const [query, setQuery] = useState("");
   const [newTicker, setNewTicker] = useState("");
   const [sourceReference, setSourceReference] = useState("");
   const [pendingTickers, setPendingTickers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState("");
-  const [selected, setSelected] = useState<string[]>(DEMO_TICKERS.filter((ticker) => items.some((item) => item.company.ticker === ticker)));
+  const selected = usePortfolioStore((state) => state.selectedTickers);
   const setSelectedTickers = usePortfolioStore((state) => state.setSelectedTickers);
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
   ), [items, query]);
 
   function updateSelection(next: string[]) {
-    setSelected(next);
     setSelectedTickers(next);
   }
 
@@ -76,18 +74,18 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Danh sách cổ phiếu</h2>
-          <p className="text-sm text-muted-foreground">Tìm trong universe đã cấu hình, mở hồ sơ doanh nghiệp hoặc chọn mã cho danh mục.</p>
+          <p className="text-sm text-muted-foreground">Tìm trong danh sách đã cấu hình, mở hồ sơ doanh nghiệp hoặc chọn mã cho danh mục.</p>
         </div>
-        <Badge variant="outline">{items.length} mã có dữ liệu · {pendingTickers.length} mã chờ dữ liệu</Badge>
+          <Badge variant="outline">{items.length} mã có dữ liệu năm 2024 · {pendingTickers.length} mã chờ dữ liệu</Badge>
       </header>
 
-      <DashboardCard title="Thêm mã cổ phiếu" description="Đăng ký mã ngoài bộ demo. Cần nguồn tham chiếu; mã mới sẽ ở trạng thái chờ cho tới khi bổ sung và kiểm tra dữ liệu tài chính, thị trường và ESG.">
+      <DashboardCard title="Thêm mã cổ phiếu" description="Đăng ký mã ngoài bộ dữ liệu hiện có. Cần nguồn tham chiếu; mã mới sẽ ở trạng thái chờ cho tới khi bổ sung và kiểm tra dữ liệu tài chính, thị trường và ESG.">
         <form onSubmit={registerTicker} className="grid gap-3 sm:grid-cols-[minmax(120px,0.4fr)_minmax(220px,1fr)_auto] sm:items-end">
           <label className="space-y-1 text-xs font-medium">Mã cổ phiếu
             <Input required maxLength={12} pattern="[A-Za-z0-9.\\-]+" value={newTicker} onChange={(event) => setNewTicker(event.target.value.toUpperCase())} placeholder="Ví dụ: QNS" />
           </label>
           <label className="space-y-1 text-xs font-medium">Nguồn tham chiếu
-            <Input required maxLength={500} value={sourceReference} onChange={(event) => setSourceReference(event.target.value)} placeholder="URL báo cáo, trang doanh nghiệp hoặc mã nguồn workbook" />
+            <Input required maxLength={500} value={sourceReference} onChange={(event) => setSourceReference(event.target.value)} placeholder="URL báo cáo hoặc trang doanh nghiệp" />
           </label>
           <Button type="submit" disabled={isSubmitting}>{isSubmitting ? <LoaderCircle className="mr-1 size-4 animate-spin" /> : <Plus className="mr-1 size-4" />}Thêm mã</Button>
         </form>
@@ -95,19 +93,18 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
         {pendingTickers.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Đang chờ dữ liệu:</span>{pendingTickers.map((ticker) => <Badge key={ticker} variant="outline">{ticker} · Chờ dữ liệu</Badge>)}</div>}
       </DashboardCard>
 
-      <DashboardCard title="Universe cổ phiếu" description="Danh sách được sinh từ nguồn dữ liệu cấu hình. Thêm mã mới bằng cách bổ sung dữ liệu và metadata vào universe; không tạo số liệu còn thiếu.">
+      <DashboardCard title="Danh sách cổ phiếu có dữ liệu" description="Danh sách lấy từ bộ dữ liệu lịch sử. Mã chưa có trường dữ liệu sẽ không được tự tạo chỉ số.">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-56 flex-1">
               <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã, tên doanh nghiệp, ngành hoặc sàn" className="pl-9" aria-label="Tìm trong danh sách cổ phiếu" />
             </div>
-            <Button size="sm" variant="secondary" onClick={() => updateSelection(DEMO_TICKERS.filter((ticker) => items.some((item) => item.company.ticker === ticker)))}>Nạp bộ demo 4 mã</Button>
-            <Button size="sm" variant="outline" onClick={() => updateSelection(allSelected ? [] : items.map((item) => item.company.ticker))}>{allSelected ? "Bỏ chọn tất cả" : "Chọn tất cả đang có"}</Button>
+            <Button size="sm" variant="secondary" onClick={() => updateSelection(portfolioTickers)}>Chọn cả 9 mã</Button>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2">
-            <p className="text-xs"><span className="font-semibold">{selected.length} mã được chọn</span><span className="text-muted-foreground"> · chuyển sang Portfolio Optimizer</span></p>
+            <p className="text-xs"><span className="font-semibold">{selected.length} mã được chọn</span><span className="text-muted-foreground"> · hệ thống sẽ tính tỷ trọng cho các mã này</span></p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="ghost" onClick={() => updateSelection([])} disabled={selected.length === 0}><X className="mr-1 size-3.5" />Bỏ chọn</Button>
               <Link href="/portfolio" onClick={() => setSelectedTickers(selected)} className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/80">Mở danh mục <ArrowUpRight className="size-3.5" /></Link>
@@ -116,16 +113,18 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-xs">
-              <thead><tr className="border-b text-muted-foreground"><th className="w-10 p-2">Chọn</th><th className="p-2">Mã / doanh nghiệp</th><th className="p-2">Ngành</th><th className="p-2">Sàn</th><th className="p-2">Ri kỳ vọng</th><th className="p-2">ESGi</th><th className="p-2">Altman Z</th><th className="p-2">Vùng</th><th className="p-2">RFin total</th><th className="p-2">OSINT</th></tr></thead>
+              <thead><tr className="border-b text-muted-foreground"><th className="w-10 p-2">Chọn</th><th className="p-2">Mã / doanh nghiệp</th><th className="p-2">Ngành</th><th className="p-2">Sàn</th><th className="p-2">Lợi suất kỳ vọng</th><th className="p-2">Điểm ESG</th><th className="p-2">Điểm Altman Z</th><th className="p-2">Vùng rủi ro</th><th className="p-2">Rủi ro tài chính</th><th className="p-2">Sự kiện công khai</th></tr></thead>
               <tbody>{filtered.map((item) => {
                 const { company, zscore, esg, events, rfinTotal } = item;
                 const checked = selected.includes(company.ticker);
+                const detailHref = `/financial-engine#${company.ticker}`;
+                const zoneLabel: Record<string, string> = { safe: "An toàn", grey: "Vùng xám", distress: "Nguy cơ" };
                 return <tr key={company.ticker} className={`border-b last:border-0 ${checked ? "bg-primary/[0.035]" : ""}`}>
                   <td className="p-2"><button type="button" role="checkbox" aria-checked={checked} aria-label={`Chọn ${company.ticker}`} onClick={() => toggle(company.ticker)} className={`flex size-5 items-center justify-center rounded border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background"}`}>{checked && <Check className="size-3.5" />}</button></td>
-                  <td className="p-2"><Link href={`/company/${company.ticker}`} className="font-semibold text-primary hover:underline">{company.ticker}</Link><div className="max-w-64 truncate text-muted-foreground">{company.name}</div></td>
+                  <td className="p-2"><Link href={detailHref} className="font-semibold text-primary hover:underline">{company.ticker}</Link><div className="max-w-64 truncate text-muted-foreground">{company.name}</div></td>
                   <td className="p-2">{company.subsector}</td><td className="p-2">{company.exchange === "TODO" ? "—" : company.exchange}</td>
-                  <td className="p-2 font-mono">{formatPct(company.expectedReturn)}</td><td className="p-2 font-mono">{formatNumber(esg.esgScore)}</td><td className="p-2 font-mono">{formatNumber(zscore.z)}</td>
-                  <td className="p-2"><Badge variant="outline" className="capitalize">{zscore.zone}</Badge></td><td className="p-2 font-mono">{formatNumber(rfinTotal)}</td><td className="p-2">{events.length ? <Badge variant="secondary">{events.length} tín hiệu</Badge> : <span className="text-muted-foreground">Không có</span>}</td>
+              <td className="p-2 font-mono">{formatPct(company.expectedReturn)}</td><td className="p-2 font-mono">{formatNumber(esg.esgScore)}</td><td className="p-2 font-mono">{formatNumber(zscore.z)}</td>
+                  <td className="p-2"><Badge variant="outline">{zoneLabel[zscore.zone] ?? zscore.zone}</Badge></td><td className="p-2 font-mono">{formatNumber(rfinTotal)}</td><td className="p-2">{events.length ? <Badge variant="secondary">{events.length} sự kiện</Badge> : <span className="text-muted-foreground">Không có</span>}</td>
                 </tr>;
               })}</tbody>
             </table>
@@ -134,7 +133,7 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
         </div>
       </DashboardCard>
 
-      <p className="text-xs text-muted-foreground">Hiện workbook đang nạp {items.length} mã có dữ liệu. Các mã được nhắc trong tài liệu mở rộng nhưng chưa có bộ trường hoàn chỉnh sẽ không xuất hiện cho tới khi được bổ sung vào nguồn dữ liệu.</p>
+      <p className="text-xs text-muted-foreground">Tỷ trọng được hệ thống tính lại theo các mã và mức ưu tiên anh chọn ở trang danh mục.</p>
     </div>
   );
 }

@@ -66,13 +66,13 @@ export function PortfolioOptimizer({
   return (
     <Tabs defaultValue="classic" className="gap-4">
       <TabsList>
-        <TabsTrigger value="classic">Tối ưu danh mục</TabsTrigger>
+        <TabsTrigger value="classic">Phân tích kịch bản</TabsTrigger>
         <TabsTrigger value="quantum">Lõi Lượng tử</TabsTrigger>
       </TabsList>
 
       <TabsContent value="classic" className="space-y-4">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_1fr]">
-          <DashboardCard title="Tham số mô hình" description="Chọn kịch bản workbook gần nhất; hiện có 2 kịch bản, chưa chạy optimizer mới">
+          <DashboardCard title="Chính sách phân tích" description="Điều chỉnh ưu tiên để khảo sát các kịch bản phân bổ tham khảo">
             <WeightSliders />
           </DashboardCard>
 
@@ -97,6 +97,12 @@ export function PortfolioOptimizer({
               )}
             </div>
 
+            <Alert>
+              <AlertDescription>
+                Chưa có tỷ trọng cuối cùng do hệ thống tính. Màn hình hiện vẫn dùng kịch bản tĩnh từ workbook demo cũ; các thanh chỉ chọn kịch bản gần nhất. Workbook dữ liệu mới chưa có chuỗi giá đủ để tính ma trận hiệp phương sai cho 9 mã.
+              </AlertDescription>
+            </Alert>
+
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">Bộ mã trong kịch bản: {activeItems.map((i) => i.company.ticker).join(", ")}</p>
             {scenarioGaps.length > 0 && <Alert><AlertDescription>Chưa có trọng số/kịch bản cho {scenarioGaps.join(", ")}. Các mã này chưa thể tham gia phân bổ từ dữ liệu hiện tại.</AlertDescription></Alert>}
             {infeasibleSelection && <Alert variant="destructive"><AlertDescription>Số mã đã chọn không khả thi với ràng buộc hiện tại {formatPct(minWeight, 0)}–{formatPct(maxWeight, 0)} mỗi mã. Cần cấu hình giới hạn phù hợp trước khi chạy solver.</AlertDescription></Alert>}
@@ -119,7 +125,7 @@ export function PortfolioOptimizer({
 
             <label className="flex max-w-sm items-center gap-3 text-xs"><span className="shrink-0 text-muted-foreground">Tổng vốn (tỷ VNĐ)</span><input type="number" min={1} step={10} value={capital / 1_000_000_000} onChange={(event) => setCapital(Math.max(1, Number(event.target.value) || 1) * 1_000_000_000)} className="h-8 w-36 rounded-md border bg-background px-2 font-mono"/></label>
 
-            <DashboardCard title="Kết quả phân bổ" description="Tỷ trọng kịch bản đang chọn và số tiền phân bổ">
+            <DashboardCard title="Kịch bản phân bổ tham khảo" description="Tỷ trọng kịch bản đang chọn và số tiền phân bổ; chưa phải danh mục cuối cùng">
               {loading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-40" />

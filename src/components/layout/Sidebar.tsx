@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Atom,
   Briefcase,
+  ChartNoAxesCombined,
   FileBarChart2,
   LayoutDashboard,
   Lock,
@@ -19,6 +20,7 @@ export const NAV_ITEMS = [
   { href: "/stocks", label: "Danh sách mã", icon: ListFilter, match: (p: string) => p.startsWith("/stocks") },
   { href: "/private", label: "Nạp DL bảo mật", icon: Lock, match: (p: string) => p.startsWith("/private") },
   { href: "/portfolio", label: "Danh mục", icon: Briefcase, match: (p: string) => p.startsWith("/portfolio") },
+  { href: "/financial-engine", label: "Bộ máy tài chính", icon: ChartNoAxesCombined, match: (p: string) => p.startsWith("/financial-engine") },
   { href: "/report/VNM", label: "Báo cáo", icon: FileBarChart2, match: (p: string) => p.startsWith("/report") },
 ];
 

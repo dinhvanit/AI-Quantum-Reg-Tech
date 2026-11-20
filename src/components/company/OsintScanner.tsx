@@ -46,7 +46,7 @@ export function OsintScanner({ ticker, posint, rfinTotal, existingUrls }: { tick
         ? { ...finding, status: "Already in assessment" as const, alreadyInAssessment: true }
         : finding));
       setMessage(payload.mode === "demo"
-        ? `DEMO DATA từ workbook; không phải kết quả crawl trực tiếp.${payload.warnings?.length ? ` ${payload.warnings.join(" ")}` : ""}`
+        ? `Chưa kết nối nguồn quét trực tiếp; đang hiển thị sự kiện đã có trong hồ sơ.${payload.warnings?.length ? ` ${payload.warnings.join(" ")}` : ""}`
         : payload.ai?.mode === "live"
           ? `${payload.providers?.join(" + ") || "Search"} + đề xuất phân loại từ ${payload.ai.provider}/${payload.ai.model}. Đây là gợi ý AI, chưa phải kết luận; reviewer phải kiểm tra nguồn và trích dẫn.${payload.ai.warning ? ` ${payload.ai.warning}` : ""}${payload.warnings?.length ? ` ${payload.warnings.join(" ")}` : ""}`
           : `${payload.providers?.join(" + ") || "Search"}; AI chưa chạy. ${payload.ai?.warning ?? "Candidate cần reviewer tự kiểm tra nguồn."}${payload.warnings?.length ? ` ${payload.warnings.join(" ")}` : ""}`);
@@ -83,7 +83,7 @@ export function OsintScanner({ ticker, posint, rfinTotal, existingUrls }: { tick
       {findings.map((finding, index) => <div key={`${finding.url}-${index}`} className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{finding.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{finding.source}{finding.sourceProvider ? ` · ${finding.sourceProvider}` : ""}{finding.searchCategory ? ` · truy vấn ${SEARCH_CATEGORY[finding.searchCategory] ?? finding.searchCategory}` : ""}{finding.readerProvider ? ` · nội dung qua ${finding.readerProvider}` : ""}{finding.publishedAt ? ` · ${finding.publishedAt}` : finding.eventDate ? ` · Sự kiện: ${finding.eventDate}` : ""} · {finding.status === "Verified" ? "Reviewer duyệt (preview)" : finding.status}{finding.demo ? " · DEMO DATA" : ""}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{finding.source}{finding.sourceProvider ? ` · ${finding.sourceProvider}` : ""}{finding.searchCategory ? ` · truy vấn ${SEARCH_CATEGORY[finding.searchCategory] ?? finding.searchCategory}` : ""}{finding.readerProvider ? ` · nội dung qua ${finding.readerProvider}` : ""}{finding.publishedAt ? ` · ${finding.publishedAt}` : finding.eventDate ? ` · Sự kiện: ${finding.eventDate}` : ""} · {finding.status === "Verified" ? "Đã rà soát trong phiên" : finding.status}</p>
           {finding.excerpt && <p className="mt-2 line-clamp-3 text-xs">{finding.excerpt}</p>}
           {finding.aiProposal && <div className="mt-2 rounded-md bg-muted/60 p-2 text-xs">
             <p className="font-medium">Đề xuất AI · {finding.aiProposal.related ? `liên quan · ${finding.aiProposal.eventType} · mức ${finding.aiProposal.severity ?? "chưa đủ bằng chứng"}` : "có thể không liên quan"} · độ tin cậy AI tự đánh giá {formatNumber(finding.aiProposal.confidence * 100, 0)}%</p>

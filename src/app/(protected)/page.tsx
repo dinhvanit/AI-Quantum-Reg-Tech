@@ -37,25 +37,25 @@ export default async function DashboardPage() {
     <div className="space-y-5">
       {/* Hàng KPI */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="DN giám sát" value={String(items.length)} hint="Ngành F&B niêm yết" icon={Building2} />
+        <StatCard label="Doanh nghiệp theo dõi" value={String(items.length)} hint="Ngành thực phẩm và đồ uống" icon={Building2} />
         <StatCard
-          label="Cảnh báo OSINT"
+          label="Sự kiện cần lưu ý"
           value={String(osintAlerts)}
           hint={osintTickers.length ? osintTickers.join(", ") : "Không có"}
           icon={AlertTriangle}
           tone={osintAlerts > 0 ? "grey" : "safe"}
         />
         <StatCard
-          label="DN vùng Distress"
+          label="Doanh nghiệp rủi ro cao"
           value={String(distress.length)}
           hint={distress.length ? distress.join(", ") : "Không có"}
           icon={Activity}
           tone={distress.length > 0 ? "distress" : "safe"}
         />
         <StatCard
-          label="Return lịch sử ESG-aware (1 kỳ)"
+          label="Lợi suất lịch sử danh mục ESG (một kỳ)"
           value={formatPct(portfolio.esgAware.realizedReturn)}
-          hint={`${realizedGap > 0 ? "+" : ""}${formatNumber(realizedGap * 100)} điểm % so với Baseline · workbook`}
+          hint={`${realizedGap > 0 ? "+" : ""}${formatNumber(realizedGap * 100)} điểm % so với danh mục tham chiếu`}
           icon={TrendingUp}
           tone="safe"
         />
@@ -65,10 +65,10 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard
           title="Phân bổ danh mục ESG-aware"
-          description={`Tỷ trọng theo workbook · ${formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ ${formatPct(portfolio.constraints.maxWeight, 0)}`}
+          description={`Tỷ trọng tham khảo · ${formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ ${formatPct(portfolio.constraints.maxWeight, 0)}`}
           action={
             <Badge variant="secondary" className="h-auto bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-              Kịch bản workbook
+              Kịch bản tham chiếu
             </Badge>
           }
         >
