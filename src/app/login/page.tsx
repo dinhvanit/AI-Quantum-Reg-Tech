@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginWithPassword, loginWithGoogle } from "./actions";
 
@@ -45,7 +46,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             type="submit"
             className="h-11 w-full rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Đăng nhập bằng email
+            Đăng nhập
           </button>
         </form>
         <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
@@ -62,6 +63,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               Tiếp tục với Google
             </button>
         </form>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Chưa có tài khoản?{" "}
+          <Link href="/signup" className="font-medium text-primary hover:underline">
+            Tạo tài khoản
+          </Link>
+        </p>
       </section>
     </div>
   );
