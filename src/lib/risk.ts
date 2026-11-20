@@ -45,6 +45,7 @@ export const OSINT_TYPE_LABEL = {
   environment: "Môi trường",
   securities: "Chứng khoán",
   media: "Truyền thông",
+  other: "Khác",
 } as const;
 
 export const ZONE_LABEL: Record<AltmanZone, string> = {

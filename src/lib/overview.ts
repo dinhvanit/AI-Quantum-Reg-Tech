@@ -10,7 +10,7 @@ export interface CompanyOverview {
   allEvents: OsintEvent[];
   /** Sự kiện đang hiệu lực (tính vào POSINT). */
   events: OsintEvent[];
-  /** Σ penalty các sự kiện đang hiệu lực. */
+  /** P_OSINT = mức phạt cao nhất trong các sự kiện đang hiệu lực (không cộng dồn – workbook Params). */
   posint: number;
   /** RFin,Total = RFin,Base + POSINT. */
   rfinTotal: number;
@@ -23,7 +23,7 @@ async function build(company: Company): Promise<CompanyOverview> {
     getOsintEvents(company.ticker),
   ]);
   const events = allEvents.filter((e) => e.active);
-  const posint = events.reduce((sum, e) => sum + e.penalty, 0);
+  const posint = events.reduce((max, e) => Math.max(max, e.penalty), 0);
   return { company, zscore, esg, allEvents, events, posint, rfinTotal: zscore.rfinBase + posint };
 }
 

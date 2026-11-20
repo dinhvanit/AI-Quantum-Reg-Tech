@@ -21,19 +21,19 @@ Lệnh trên chạy FastAPI ở cổng 8000. Nếu chưa cài dependency, tạo 
 
 ### Chọn chế độ OSINT
 
-- Firecrawl là nguồn tìm kiếm duy nhất: mỗi mã chạy 4 truy vấn sự kiện xử phạt (thuế, môi trường, chứng khoán, hành chính), lọc `OSINT_LOOKBACK_YEARS` năm gần nhất, scrape nội dung bài. Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key → app hiện sự kiện workbook với nhãn `DEMO DATA`.
-- Chi phí: khoảng 4 × (2 + `OSINT_FIRECRAWL_LIMIT`) credit cho mỗi mã mỗi lượt quét (mặc định ≈ 28). Kiểm tra số credit còn lại trước buổi demo.
-- Jina Reader chỉ đọc nội dung cho tối đa 3 kết quả Firecrawl không scrape được (tắt bằng `OSINT_JINA_FALLBACK=false`). Gemini/Groq có thể đề xuất loại/mức sự kiện; đây không phải xác nhận vi phạm.
-- Nếu FastAPI không chạy, route Next.js không tự tìm kiếm thay mà trả sự kiện workbook kèm cảnh báo "Không kết nối được backend OSINT".
-- Để bật AI: chọn `AI_PROVIDER=groq` hoặc `gemini` và điền key/model tương ứng. Chỉ excerpt bài báo công khai được gửi cho model; PDF riêng tư vẫn xử lý cục bộ.
+- Chỉ dùng Firecrawl Agent API: mỗi lượt quét = 1 job cho 1 mã, 1 năm dữ liệu t, prompt "Tìm các sự kiện doanh nghiệp {tên} (mã {mã}) bị cơ quan nhà nước xử phạt, truy thu hoặc kết luận vi phạm trong năm {t}". **Thường mất vài phút** – giao diện hiện số giây đã chờ.
+- Chạy ở `/portfolio` → "Kiểm tra OSINT năm t" (hoặc ở `/company/[mã]` cho năm mới nhất). Sự kiện đã duyệt trong workbook hiện ở mục riêng và đã được tính; sự kiện mới phải mở nguồn rồi bấm "Chấp nhận mức 1/2/3" hoặc "Bỏ".
+- Cần `FIRECRAWL_API_KEY` trong `backend/.env`; thiếu key hoặc FastAPI không chạy → chỉ hiện sự kiện đã duyệt trong workbook kèm cảnh báo.
+- Chi phí: tới `OSINT_AGENT_MAX_CREDITS` (mặc định 500) mỗi mã mỗi lượt. Kiểm tra credit trước buổi demo; nên chạy sẵn một lượt trước giờ trình bày.
+- `OSINT_VERIFY_SOURCES=false` (mặc định): không đọc lại trang nguồn, không gọi LLM. Bật `true` để kiểm quote bằng Firecrawl scrape (1 credit/trang) và cho Groq/Gemini gợi ý mức. Jina giữ trong code nhưng tắt.
 
 ## Kiểm chứng AI Agent trong demo
 
-1. Mở `/company/VNM` và bấm **Run OSINT scan**. Một lượt live thành công phải hiện `mode=live`, nguồn `firecrawl` (kèm `jina-reader` nếu có dùng), số truy vấn (4/mã), LLM `live` cùng tên model, và đủ 5 bước `discover → graph_enrichment → extract → classify → validate`.
+1. Mở `/company/VNM` và bấm **Run OSINT scan**. Một lượt live thành công phải hiện `mode=live`, nguồn `firecrawl-agent` + `firecrawl-scrape` (chế độ search: `firecrawl`, 4 truy vấn/mã), số credit agent và số quote agent có trong trang nguồn, LLM `live` cùng tên model, và đủ 5 bước `discover → graph_enrichment → extract → classify → validate`.
 2. Đọc dòng chẩn đoán ngay dưới nút: số kết quả, số đề xuất LLM và số quote khớp chính xác với excerpt. Mở nguồn từng kết quả để tự đối chiếu. Số đề xuất lớn hơn 0 chứng minh model đã trả structured output; quote khớp bằng 0 vẫn là kết quả hợp lệ nhưng không có căn cứ để preview penalty.
 3. Neo4j `đã kết nối, chưa có node công ty` chứng minh kết nối sống nhưng graph chưa có dữ liệu; `chưa kết nối` là cấu hình/kết nối cần xử lý. Không cần ghi dữ liệu demo vào graph để chạy luồng OSINT.
 4. Nếu có kết quả workbook, UI ghi rõ `DEMO DATA` và AI bị skip. Nếu tìm kiếm sống không có bài, đây không phải lỗi LLM: không có nguồn để phân loại.
-5. Mở Developer Tools → Network, chọn request `POST /api/osint/scan` để kiểm tra HTTP `200`, workflow, metadata provider/AI và findings. Không chụp/paste request environment hoặc API key vào log demo.
+5. Mở Developer Tools → Network, chọn request `POST /api/osint/scan` (HTTP `202` kèm `scan_id`) và các request `GET /api/osint/scan/<id>` (trạng thái `running` → `completed`) để kiểm tra workflow, metadata provider/AI và findings. Không chụp/paste request environment hoặc API key vào log demo.
 
 Luồng Firecrawl-only mới chỉ được kiểm bằng test backend với provider giả lập (`backend/tests/test_osint_graph.py`); chưa có lượt kiểm chứng với key thật. Kết quả tìm kiếm và nội dung LLM thay đổi theo thời điểm.
 

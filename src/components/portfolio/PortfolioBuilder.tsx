@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Calculator, Check, Leaf, RotateCcw, ShieldCheck, TrendingUp } from "lucide-react";
+import { OsintScanner } from "@/components/company/OsintScanner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,8 +96,32 @@ function constrainedWeights(records: FinancialEngineRecord[], preferences: Prefe
   return new Map(records.map((record, i) => [record.ticker, weights[i] / weightTotal]));
 }
 
-export function PortfolioBuilder({ records }: { records: FinancialEngineRecord[] }) {
-  const sortedRecords = useMemo(() => [...records].sort((a, b) => a.ticker.localeCompare(b.ticker)), [records]);
+/** R_fin,total sau khi tính mức OSINT người dùng vừa chấp nhận: mức cao nhất (workbook, chấp nhận) → bảng Params. */
+function withAcceptedOsint(record: FinancialEngineRecord, accepted: number, penaltyTable: Record<string, number>): FinancialEngineRecord {
+  const level = Math.max(record.calculated.osint.penaltyLevel, accepted);
+  if (level === record.calculated.osint.penaltyLevel) return record;
+  const penalty = penaltyTable[String(level)] ?? record.calculated.osint.penalty;
+  return {
+    ...record,
+    calculated: {
+      ...record.calculated,
+      altman: { ...record.calculated.altman, rFinTotal: record.calculated.altman.rFinBase + penalty },
+      osint: { ...record.calculated.osint, penaltyLevel: level, penalty },
+    },
+  };
+}
+
+export function PortfolioBuilder({ records, penaltyTable }: { records: FinancialEngineRecord[]; penaltyTable: Record<string, number> }) {
+  const years = useMemo(() => [...new Set(records.map((r) => r.dataYear))].sort((a, b) => a - b), [records]);
+  const [dataYear, setDataYear] = useState(years[years.length - 1]);
+  const forecastYear = dataYear + 1;
+  // Mức OSINT người dùng chấp nhận trong phiên, theo `${năm}:${mã}`.
+  const [acceptedLevels, setAcceptedLevels] = useState<Record<string, number>>({});
+  const [osintTicker, setOsintTicker] = useState("");
+  const sortedRecords = useMemo(() => records
+    .filter((r) => r.dataYear === dataYear)
+    .map((r) => withAcceptedOsint(r, acceptedLevels[`${dataYear}:${r.ticker}`] ?? 0, penaltyTable))
+    .sort((a, b) => a.ticker.localeCompare(b.ticker)), [records, dataYear, acceptedLevels, penaltyTable]);
   const selectedTickers = usePortfolioStore((state) => state.selectedTickers);
   const setSelectedTickers = usePortfolioStore((state) => state.setSelectedTickers);
   const [preferences, setPreferences] = useState<Preferences>(SCENARIOS[0].preferences);
@@ -141,7 +166,11 @@ export function PortfolioBuilder({ records }: { records: FinancialEngineRecord[]
       <header className="space-y-2">
         <p className="text-sm text-muted-foreground">Phân bổ vốn theo lựa chọn và mục tiêu đầu tư của anh</p>
         <h2 className="text-2xl font-semibold tracking-tight">Tạo danh mục đầu tư</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">Chọn cổ phiếu, nhập quy mô vốn và điều chỉnh mức ưu tiên. Hệ thống tự tính tỷ trọng đề xuất, tổng tỷ trọng luôn bằng 100%.</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">Chọn năm dữ liệu, cổ phiếu, quy mô vốn và mức ưu tiên. Hệ thống dùng chỉ số năm {dataYear} để phân bổ và đối chiếu với lợi suất thực tế năm {forecastYear}.</p>
+        <div className="flex flex-wrap items-center gap-2 pt-1" role="group" aria-label="Năm dữ liệu">
+          <span className="text-sm text-muted-foreground">Năm dữ liệu:</span>
+          {years.map((year) => <Button key={year} size="sm" variant={year === dataYear ? "default" : "outline"} onClick={() => setDataYear(year)}>{year} → {year + 1}</Button>)}
+        </div>
       </header>
 
       <section className="space-y-3">
@@ -212,17 +241,50 @@ export function PortfolioBuilder({ records }: { records: FinancialEngineRecord[]
           </Card>
 
           {selectedRecords.length > 0 && <div className="grid gap-3 sm:grid-cols-2">
-            <Metric label="Lợi suất kỳ vọng theo CAPM" value={formatPct(expected)} icon={TrendingUp} />
+            <Metric label={`Lợi suất kỳ vọng CAPM (dữ liệu ${dataYear})`} value={formatPct(expected)} icon={TrendingUp} />
             <Metric label="Điểm ESG danh mục" value={formatNumber(esgTotal, 3)} icon={Leaf} />
             <Metric label="Rủi ro tài chính bình quân" value={formatPct(riskTotal)} icon={ShieldCheck} />
-            <Metric label="Lợi suất lịch sử 2025" value={formatPct(historical)} icon={RotateCcw} />
+            <Metric label={`Lợi suất thực tế ${forecastYear}`} value={formatPct(historical)} icon={RotateCcw} />
           </div>}
 
           <Alert>
-            <AlertDescription>Phương pháp: chuẩn hóa thứ hạng lợi suất, ESG và an toàn tài chính trong nhóm được chọn; kết hợp theo mức ưu tiên rồi phân bổ theo điểm, với trần mỗi mã. Đây là công cụ mô phỏng kịch bản, chưa dùng ma trận hiệp phương sai để tối ưu Markowitz. Lợi suất lịch sử 2025 không phải dự báo.</AlertDescription>
+            <AlertDescription>Phương pháp: chuẩn hóa thứ hạng lợi suất, ESG và an toàn tài chính trong nhóm được chọn; kết hợp theo mức ưu tiên rồi phân bổ theo điểm, với trần mỗi mã. Đây là công cụ mô phỏng kịch bản, chưa dùng ma trận hiệp phương sai để tối ưu Markowitz. Lợi suất thực tế {forecastYear} là kết quả lịch sử để đối chiếu, không phải dự báo.</AlertDescription>
           </Alert>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kiểm tra OSINT năm {dataYear}</CardTitle>
+          <CardDescription>Sự kiện trong bộ dữ liệu đã được duyệt và đã tính sẵn. Firecrawl Agent tìm thêm sự kiện năm {dataYear} cho mã bạn chọn; chỉ sự kiện bạn chấp nhận mới cộng vào R_fin,total và làm đổi tỷ trọng (trong phiên này).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {selectedRecords.length === 0 ? <p className="text-sm text-muted-foreground">Chọn cổ phiếu trước khi quét OSINT.</p> : <>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Mã cần quét OSINT">
+              {selectedRecords.map((record) => {
+                const accepted = acceptedLevels[`${dataYear}:${record.ticker}`] ?? 0;
+                return <Button key={record.ticker} size="sm" variant={osintTicker === record.ticker ? "default" : "outline"} onClick={() => setOsintTicker(record.ticker)}>
+                  {record.ticker} · mức {record.calculated.osint.penaltyLevel}{accepted > 0 ? " (đã chấp nhận)" : ""}
+                </Button>;
+              })}
+            </div>
+            {(() => {
+              const record = records.find((r) => r.dataYear === dataYear && r.ticker === osintTicker && selectedTickers.includes(r.ticker));
+              if (!record) return <p className="text-xs text-muted-foreground">Chọn một mã để quét. Mỗi lượt quét là một job Firecrawl Agent (tốn credit, thường vài phút).</p>;
+              return <OsintScanner
+                key={`${dataYear}:${record.ticker}`}
+                ticker={record.ticker}
+                year={dataYear}
+                rfinBase={record.calculated.altman.rFinBase}
+                workbookLevel={record.calculated.osint.penaltyLevel}
+                penaltyTable={penaltyTable}
+                existingUrls={record.calculated.osint.events.map((event) => event.sourceUrl ?? "").filter(Boolean)}
+                onAcceptedLevel={(ticker, level) => setAcceptedLevels((current) => ({ ...current, [`${dataYear}:${ticker}`]: level }))}
+              />;
+            })()}
+          </>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

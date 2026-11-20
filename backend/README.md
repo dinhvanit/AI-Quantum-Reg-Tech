@@ -21,9 +21,9 @@ Implemented: paginated/searchable company directory, provenance/version envelope
 
 The backend is separated into `api/routes`, `domain/contracts`, `repositories`, `services`, and `agents`. `app.main` is only the composition root; HTTP route modules preserve the existing `/api/v1/...` paths.
 
-Set `NEXT_PUBLIC_USE_MOCK=false` so public company/ESG/OSINT/methodology/scenario reads go through this API. Private PDFs remain browser-local. Portfolio reads still return workbook scenarios; the current solver endpoint does not run a covariance optimizer.
+Set `NEXT_PUBLIC_USE_MOCK=false` so public company/ESG/OSINT/methodology reads go through this API. Private PDFs remain browser-local. `GET /api/v1/financial-engine` serves the 36 recalculated company-years used by `/portfolio`; there is no covariance optimizer endpoint.
 
-The OSINT endpoint runs a bounded LangGraph (`discover → graph_enrichment → extract → classify → validate`). Discovery uses Firecrawl only: four penalty-category queries per ticker (tax, environment, securities, administrative) with article scraping; Jina Reader reads at most three results Firecrawl could not scrape. Without `FIRECRAWL_API_KEY` the scan returns workbook events labelled demo. LangChain calls Groq or Gemini for structured proposals. Neo4j enrichment uses read-only, parameterized lookups; the model never supplies Cypher. Search findings stay unverified and reviewer actions remain session-local; there is no persistent audit/checkpoint store yet.
+The OSINT endpoint runs a bounded LangGraph (`discover → graph_enrichment → extract → classify → validate`). Scans are background jobs: `POST /api/v1/osint/scans` returns `202 {scan_id, status: "running"}`; poll `GET /api/v1/osint/scans/{scan_id}` until `completed` (with `result`) or `failed`. Jobs live in process memory (single worker; lost on restart; at most 3 running). The request is `{tickers, year}`. Discovery uses the Firecrawl Agent API only: one job per ticker with the one-sentence prompt "Tìm các sự kiện doanh nghiệp {tên} (mã {mã}) bị cơ quan nhà nước xử phạt, truy thu hoặc kết luận vi phạm trong năm {year}". Workbook events already reviewed for that year (`OSINT_Events`, `Include = 1`) are returned alongside and marked as already counted. Without `FIRECRAWL_API_KEY` only those reviewed events are returned. `OSINT_VERIFY_SOURCES=true` (off by default) re-reads source pages with Firecrawl scrape to check agent quotes and lets Groq/Gemini propose a level; Jina stays in code, disabled by default. Neo4j enrichment uses read-only, parameterized lookups; the model never supplies Cypher. Search findings stay unverified and reviewer actions remain session-local; there is no persistent audit/checkpoint store yet.
 
 ## Configuration
 
@@ -32,7 +32,6 @@ Copy `backend/.env.example` to `backend/.env` (ignored by Git). Load order: real
 ## Deploy (separate from the frontend)
 
 ```bash
-npm run data                                            # data/generated/*.json is copied into the image
 docker build -f backend/Dockerfile -t quantumregtech-api .   # context = repo root, filtered by /.dockerignore
 docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
 ```
@@ -40,7 +39,7 @@ docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
 - Inject variables from `backend/.env.example` through the host's env/secret manager; the image contains no `.env`. The container listens on `$PORT` (default 8000).
 - Set `CORS_ORIGINS` to the frontend origin(s), e.g. `https://<app>.vercel.app`.
 - The SQLite registry (`UNIVERSE_DB_PATH`) is lost on redeploy unless it points to a mounted volume.
-- Workbook changes require `npm run data` and a new image.
+- The Dockerfile generates `data/generated/*.json` from the workbook in a Node build stage (the folder is gitignored, so Git-based hosts such as Render need this). Workbook changes require a new image. Render: see `render.yaml`.
 - Health check: `GET /health`. Full checklist: [`docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 The connected Aura database currently contains no nodes. To deliberately load the four workbook companies and the workbook OSINT event as `demo=true`, run:

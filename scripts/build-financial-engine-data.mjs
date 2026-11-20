@@ -6,9 +6,15 @@ import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE_RELATIVE = "data/QuantumRegTech_Input_Data_FINAL - 11h12.xlsx";
+const SOURCE_RELATIVE = "data/QuantumRegTech_Input_Data_final.xlsx";
 const SOURCE = join(ROOT, SOURCE_RELATIVE);
 const OUTPUT = join(ROOT, "data", "generated", "financial_engine.json");
+// Legal names (identity only, not financial data): used by the OSINT agent prompt and the UI.
+const COMPANY_NAMES = {
+  VNM: "CTCP Sữa Việt Nam", MCH: "CTCP Hàng tiêu dùng Masan", MCM: "CTCP Giống bò sữa Mộc Châu",
+  SBT: "CTCP Thành Thành Công - Biên Hòa", QNS: "CTCP Đường Quảng Ngãi", KDC: "CTCP Tập đoàn KIDO",
+  PAN: "CTCP Tập đoàn PAN", IDP: "CTCP Sữa Quốc tế", SAB: "Tổng CTCP Bia - Rượu - Nước giải khát Sài Gòn",
+};
 
 function cellValue(cell) {
   const raw = cell.value;
@@ -62,7 +68,7 @@ for (const event of events) {
   const key = `${forecastYear}:${event.Ticker.toUpperCase()}`;
   const level = num(event.Proposed_Level, `OSINT ${key} level`);
   const list = eventsByForecastKey.get(key) ?? [];
-  list.push({ ticker: event.Ticker, entity: event.Entity, decisionYear: event.Decision_Year, forecastYear, level, sourceUrl: event.Source_URL ?? null, summary: event.Summary ?? null, includedSubsidiary: event.Is_Subsidiary === 1 });
+  list.push({ ticker: event.Ticker.toUpperCase(), entity: event.Entity, decisionYear: event.Decision_Year, forecastYear, level, authority: event.Authority ?? null, violationType: event.Violation_Type ?? null, dateNote: event.Date_Note ?? null, sourceUrl: event.Source_URL ?? null, summary: event.Summary ?? null, includedSubsidiary: event.Is_Subsidiary === 1 });
   eventsByForecastKey.set(key, list);
 }
 
@@ -80,7 +86,7 @@ for (let r = 1; r <= esgSheet.rowCount; r++) {
     continue;
   }
   if (!activeYear || !/^[ESG]_\d{2}$/.test(String(first ?? ""))) continue;
-  const indicator = { code: String(first), type: cellValue(esgSheet.getCell(r, 3)), polarity: cellValue(esgSheet.getCell(r, 4)), values: {} };
+  const indicator = { code: String(first), name: String(cellValue(esgSheet.getCell(r, 2)) ?? "").trim(), type: cellValue(esgSheet.getCell(r, 3)), polarity: cellValue(esgSheet.getCell(r, 4)), values: {} };
   for (const [ticker, column] of companyColumns) indicator.values[ticker] = cellValue(esgSheet.getCell(r, column));
   esgBlocks.get(activeYear).indicators.push(indicator);
 }
@@ -109,6 +115,13 @@ for (const [year, block] of esgBlocks) {
     const E = avg(pillars.E), S = avg(pillars.S), G = avg(pillars.G);
     esgScores.set(`${year}:${ticker}`, { E, S, G, total: 0.4 * E + 0.35 * S + 0.25 * G });
   }
+}
+
+// Params!A20:E23 – Rf/MRP per data year (CAPM inputs are read per row from GOC_ZSCORE; this is for display/provenance).
+const marketParams = {};
+for (let r = 20; r <= 23; r++) {
+  const year = num(cellValue(paramsSheet.getCell(r, 1)), `Params!A${r}`);
+  marketParams[year] = { forecastYear: num(cellValue(paramsSheet.getCell(r, 2)), `Params!B${r}`), riskFree: num(cellValue(paramsSheet.getCell(r, 3)), `Params!C${r}`), marketRiskPremium: num(cellValue(paramsSheet.getCell(r, 4)), `Params!D${r}`), source: String(cellValue(paramsSheet.getCell(r, 5)) ?? "") };
 }
 
 const distress = num(param.get("Z_nguy_hiem"), "Z_nguy_hiem");
@@ -180,12 +193,24 @@ const records = inputRows.map((input) => {
 });
 
 const keys = new Set(records.map((r) => `${r.dataYear}:${r.ticker}`));
+const missingNames = [...new Set(records.map((r) => r.ticker))].filter((ticker) => !COMPANY_NAMES[ticker]);
+if (missingNames.length) throw new Error(`COMPANY_NAMES missing: ${missingNames.join(", ")}`);
 if (records.length !== 36 || keys.size !== records.length) throw new Error(`Expected 36 unique company-year rows; got ${records.length}/${keys.size}.`);
 const payload = {
   dataset: "QuantumRegTech_Input_Data_FINAL",
   engineVersion: "2.1.0-raw-input-recalculation",
   generatedAt: new Date().toISOString(), sourceWorkbook: SOURCE_RELATIVE,
   periods: [...new Set(records.map((r) => r.dataYear))].sort(), tickers: [...new Set(records.map((r) => r.ticker))].sort(), recordCount: records.length,
+  companies: Object.fromEntries([...new Set(records.map((r) => r.ticker))].sort().map((ticker) => [ticker, { name: COMPANY_NAMES[ticker] }])),
+  // Params!A12:C15 – OSINT level → P_OSINT. Live findings a reviewer accepts are converted with this table, never by the LLM.
+  penaltyTable: Object.fromEntries([...penaltyByLevel].sort((a, b) => a[0] - b[0])),
+  params: { zDistress: distress, zSafe: safe, rFinMin: rMin, rFinMax: rMax, market: marketParams },
+  // Raw GOC_ESG indicators per year (N/A → null). Scores above are computed from these.
+  esgIndicators: Object.fromEntries([...esgBlocks].map(([year, block]) => [year, block.indicators.map(({ code, name, type, polarity, values }) => ({
+    code, name, type, polarity, values: Object.fromEntries(Object.entries(values).map(([ticker, value]) => [ticker, typeof value === "number" && Number.isFinite(value) ? value : null])),
+  }))])),
+  // Reviewed workbook events (Include = 1). They are already approved: used directly, not re-reviewed.
+  osintEvents: [...eventsByForecastKey.values()].flat().sort((a, b) => a.ticker.localeCompare(b.ticker) || a.decisionYear - b.decisionYear),
   reconciliation: { reference: "TINH_TONG_HOP and ESG_Scores cached results (validation only)", status: "passed", metricsPerRecord: 14 },
   optimizerReadiness: { ready: false, missing: ["dated monthly or daily adjusted-price return series per asset for covariance estimation", "approved optimization coefficients and investment-policy constraints"], note: "Annual start/end prices are outcomes for reconciliation, not a robust 9-asset covariance dataset." },
   dataQuality: ["Financial statement raw values have workbook cell provenance but no per-cell source URL.", "Beta, Rf and MRP are supplied by the workbook; beta window and rate retrieval dates need source-level reconciliation.", "ESG is recomputed from raw GOC_ESG indicators; scores are relative to the current 9-company peer set.", "2024 inputs predict 2025; realized price return is a historical outcome, not a forward expectation."],

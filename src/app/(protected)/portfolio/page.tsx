@@ -6,10 +6,9 @@ import { getFinancialEngineData } from "@/lib/financial-engine";
 export const metadata: Metadata = { title: "Tạo danh mục đầu tư | QuantumRegTech" };
 
 export default async function PortfolioPage() {
-  try {
-    const { records } = await getFinancialEngineData(2024);
-    return <PortfolioBuilder records={records} />;
-  } catch (error) {
-    return <Card><CardHeader><CardTitle>Chưa tải được dữ liệu danh mục</CardTitle><CardDescription>{error instanceof Error ? error.message : "Không kết nối được dịch vụ dữ liệu."}</CardDescription></CardHeader></Card>;
+  const data = await getFinancialEngineData().catch((error: unknown) => error instanceof Error ? error : new Error("Không kết nối được dịch vụ dữ liệu."));
+  if (data instanceof Error) {
+    return <Card><CardHeader><CardTitle>Chưa tải được dữ liệu danh mục</CardTitle><CardDescription>{data.message}</CardDescription></CardHeader></Card>;
   }
+  return <PortfolioBuilder records={data.records} penaltyTable={data.penaltyTable} />;
 }

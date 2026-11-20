@@ -12,8 +12,12 @@ export interface Company {
   subsector: string;
   listed: boolean;
   beta: number;
+  /** CAPM Ri tính từ dữ liệu năm dataYear. */
   expectedReturn: number;
+  /** Lợi suất giá điều chỉnh trong năm forecastYear (lịch sử, không phải dự báo). */
   realizedReturn: number;
+  dataYear: number;
+  forecastYear: number;
 }
 
 export type AltmanZone = "safe" | "grey" | "distress";
@@ -56,13 +60,18 @@ export interface Esg {
   evidence: EsgEvidence[];
 }
 
-export type OsintType = "tax" | "environment" | "securities" | "media";
+export type OsintType = "tax" | "environment" | "securities" | "media" | "other";
 export type OsintSeverity = 1 | 2 | 3;
 
 export interface OsintEvent {
   id: string;
   ticker: Ticker;
+  /** Năm ra quyết định (YYYY). */
   date: string;
+  dateNote?: string | null;
+  decisionYear?: number;
+  /** Năm dự báo bị tính phạt (= decisionYear + 1). */
+  forecastYear?: number;
   type: OsintType;
   severity: OsintSeverity;
   penalty: number;
@@ -70,37 +79,6 @@ export interface OsintEvent {
   source: string;
   url: string;
   active: boolean;
-}
-
-export type Weights = Record<Ticker, number>;
-
-export interface PortfolioScenario {
-  weights: Weights;
-  expectedReturn: number;
-  realizedReturn: number;
-}
-
-export interface PortfolioResult {
-  capital: number;
-  constraints: { minWeight: number; maxWeight: number };
-  params: { alpha: Todo<number>; beta: Todo<number>; gamma: Todo<number>; delta: Todo<number> };
-  solver: string;
-  esgAware: PortfolioScenario;
-  baseline: PortfolioScenario;
-  qubo: { bitsPerAsset: number; numQubits: number; matrix: Todo<number[][]> | string };
-}
-
-export interface PortfolioParams {
-  alpha: number;
-  beta: number;
-  gamma: number;
-  delta: number;
-}
-
-/** Kịch bản tính sẵn (scenarios.json) – dùng cho slider khi chưa có backend. */
-export interface Scenario {
-  params: PortfolioParams;
-  weights: Weights;
 }
 
 /** Kết quả Cổng 2 (POST /api/v1/private/analyze) – dạng Cổng 1 + deletedAt. */
@@ -114,8 +92,8 @@ export interface PrivateAnalysis {
   esg: Omit<Esg, "esgScore"> & { esgScore: Todo<number> };
   events: OsintEvent[];
   posint: Todo<number>;
-  /** "document" = số liệu trích từ tệp tải lên; "sample" = kết quả mẫu (sheet Private_Sample). */
-  source: "document" | "sample";
+  /** "document" = số liệu trích từ tệp tải lên. */
+  source: "document";
   /** Chi tiết trích xuất – chỉ có khi source = "document". */
   extraction?: DocumentExtraction;
   /** ISO timestamp lúc tệp gốc bị xoá (Zero-Retention). */
@@ -154,14 +132,18 @@ export interface DocumentExtraction {
 
 export type PrivateStage = "ocr" | "normalize" | "ai" | "zscore" | "osint";
 
-/** Tham số chung – sheet Params (docs/DATA.md). */
+/** Tham số chung – sheet Params của workbook (docs/DATA.md). */
 export interface Methodology {
+  dataYear: number;
+  forecastYear: number;
   riskFree: { value: number; source: string };
   equityRiskPremium: { value: number; source: string };
   capm: string;
   altman: string;
   altmanZones: string;
   posintTiers: string;
+  /** Params: mức vi phạm 0–3 → P_OSINT. */
+  penaltyTable: Record<string, number>;
   dataSource: string;
 }
 

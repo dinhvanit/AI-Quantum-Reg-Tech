@@ -18,17 +18,6 @@ def methodology() -> dict:
     return load_data_file("methodology.json")
 
 
-@router.get("/api/v1/scenarios")
-def scenarios() -> list[dict]:
-    return load_data_file("scenarios.json")
-
-
-@router.post("/api/v1/portfolio/optimize")
-def portfolio_optimize() -> dict:
-    # Workbook scenario only: no covariance matrix/price history is available for a fresh solve.
-    return load_data_file("portfolio.json")
-
-
 @router.get("/api/v1/graph/status")
 def graph_status() -> dict:
     from app.services.neo4j import get_neo4j_service

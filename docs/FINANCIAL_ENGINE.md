@@ -1,6 +1,6 @@
 # Financial Engine and Methodology
 
-**Status:** `scripts/build-financial-engine-data.mjs` independently recalculates 36 company-year records and exposes them at `GET /api/v1/financial-engine`. The stock list and portfolio scenario builder use the 2024 records. The current builder produces preference-based suggested weights; a validated Markowitz optimizer still requires dated adjusted-price return series and approved investment-policy constraints.
+**Status:** `scripts/build-financial-engine-data.mjs` independently recalculates 36 company-year records and exposes them at `GET /api/v1/financial-engine`. Source: `data/QuantumRegTech_Input_Data_final.xlsx` (single source). Profile screens use the latest data year (2024); `/portfolio` lets the user pick any data year t and compares with realized returns of t+1. The current builder produces preference-based suggested weights; a validated Markowitz optimizer still requires dated adjusted-price return series and approved investment-policy constraints.
 **Related:** [DATA.md](DATA.md), [spec data model](../specs/001-investor-due-diligence-demo/data-model.md)
 
 ## Rules for all calculations
@@ -103,7 +103,7 @@ qᵢ = exp(4 × uᵢ)
 
 `N` min-max normalizes each input among the selected companies. The preference sliders are normalized to sum to one. The system distributes weights in proportion to `qᵢ` and reapplies a concentration cap: 35% per company for three or more selections, 55% for two, and 100% for a single selection. The amounts are rounded so displayed allocations add back to the entered capital.
 
-This is a transparent preference-based allocation for scenario exploration. It does not estimate covariance or claim to be a Markowitz optimum. The measured CAPM, ESG, and financial-risk inputs are historical workbook values; realized 2025 return is shown as an outcome, never as a forecast.
+This is a transparent preference-based allocation for scenario exploration. It does not estimate covariance or claim to be a Markowitz optimum. The measured CAPM, ESG, and financial-risk inputs are historical workbook values; the realized return of year t+1 is shown as an outcome, never as a forecast. P_OSINT events the user accepts in the session raise R_fin,total via the Params table (highest level, no summing) before weights are computed.
 
 The research target remains:
 
@@ -137,9 +137,8 @@ Every aggregate must list excluded/missing inputs and the selected time period. 
 
 ## Current implementation boundary
 
-- `npm run data` computes CAPM from `Params.rf`, `Params.erp`, and `Market.beta`; computes the one-period return from `price_start_next` and `price_end_next`; and recomputes listed Altman inputs from the `Financials` sheet. It fails generation if these values disagree with the workbook's formula results beyond tolerance.
-- The data builder independently computes Baseline and ESG-aware weighted expected/realized returns from their workbook weights and per-company returns, validates weight totals/bounds, then checks those aggregates against `Portfolio_Summary` before exporting them.
-- The displayed price return is `price_end_next / price_start_next - 1`; source values are described as 2025 prices, but the workbook/runtime payload currently lacks the dates of those two observations. It is not annualized, rolling, out-of-sample, or a live feed.
+- `npm run data` runs `build-financial-engine-data.mjs` (recalculate + reconcile all 36 rows) and then `build-data.mjs` (screen JSON for the latest data year). The old 4-ticker workbook, its Baseline/ESG-aware scenarios and `Portfolio_Summary` checks were removed.
+- Realized return = adjusted price end / start of the forecast year − 1 (`GOC_RREAL`). It is not annualized, rolling, out-of-sample, or a live feed.
 - The portfolio route computes preference-based suggested weights from selected 2024 records and current slider values. It does not currently run Markowitz/COBYLA or use a covariance matrix.
 - ESG pillar and total scores are recomputed from raw ESG indicators. The nine-company percentile scores are relative to this peer group and change if the group changes.
 - The OSINT LLM can propose category/severity only from provider-supplied title/excerpt text. The quote must be a literal substring of the excerpt. Reviewer action is session-local and cannot write an official score.

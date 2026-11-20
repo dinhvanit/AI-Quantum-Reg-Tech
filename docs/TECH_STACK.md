@@ -19,7 +19,7 @@
 | Đọc PDF / OCR (Cổng 2) | **pdf.js** (`pdfjs-dist` 6 – bản đã vá lỗi chạy mã khi mở PDF độc hại) + **Tesseract.js 7** + `@tesseract.js-data/vie` | Chạy trong trình duyệt; worker, lõi WASM, mô hình tiếng Việt tự host ở `public/vendor` |
 | State | **Zustand 5** (`src/store/portfolio.ts`) | Tham số α β γ δ, solver, danh sách DN theo dõi |
 | Font | **Be Vietnam Pro** (UI), **JetBrains Mono** (số liệu) qua `next/font` | Hỗ trợ tiếng Việt đầy đủ |
-| Dữ liệu | **File Excel** `data/QuantumRegTech_Data.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `data/generated/` (dùng chung cho Next.js qua alias `@data/*` và FastAPI) | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
+| Dữ liệu | **File Excel** `data/QuantumRegTech_Input_Data_final.xlsx` → `scripts/build-data.mjs` (**exceljs**) → JSON trong `data/generated/` (dùng chung cho Next.js qua alias `@data/*` và FastAPI) | Nguồn duy nhất; schema JSON = hợp đồng API tương lai (xem `DATA.md`) |
 | Xuất PDF | Trang `/report/[ticker]` + CSS `@media print` → *Save as PDF* | Không cần thư viện PDF |
 | Deploy | **Vercel** (frontend) + container (FastAPI) | Deploy riêng; Vercel có preview link cho mỗi branch/PR – checklist: `docs/DEPLOY.md` |
 | Code quality | ESLint (`eslint-config-next`) | Có sẵn khi khởi tạo Next.js (Prettier chưa cài) |
@@ -95,7 +95,7 @@ src/
 └── store/
     └── portfolio.ts              # Zustand store
 data/
-├── QuantumRegTech_Data.xlsx      # ⭐ Nguồn dữ liệu duy nhất (xem docs/DATA.md)
+├── QuantumRegTech_Input_Data_final.xlsx  # ⭐ Nguồn dữ liệu duy nhất – 9 mã, 2021–2024 (xem docs/DATA.md)
 └── generated/                    # *.json SINH TỪ file Excel (npm run data, không commit) – hợp đồng dữ liệu chung cho Next.js và FastAPI
 backend/                          # FastAPI + LangGraph (Python, deploy riêng – xem backend/README.md)
 ├── app/
@@ -140,11 +140,9 @@ export async function getCompanies(): Promise<Company[]> {
 | `getZScore(ticker)` | `zscore.json` (ZScore) | `GET /api/v1/companies/{ticker}/zscore` |
 | `getEsg(ticker)` | `esg.json` (ESG + ESG_Evidence) | `GET /api/v1/companies/{ticker}/esg` |
 | `getOsintEvents(ticker, months)` | `osint_events.json` (OSINT) | `GET /api/v1/companies/{ticker}/osint?months=36` |
-| `getPortfolio()` | `portfolio.json` (Params + Portfolio + Portfolio_Summary + QUBO_Matrix) | `POST /api/v1/portfolio/optimize` |
-| `getScenarios()` | `scenarios.json` (Scenarios) | – (chỉ mock; có backend thì gọi optimize trực tiếp) |
 | `getMethodology()` | `methodology.json` (Params) | `GET /api/v1/methodology` |
 | `getEsgIndicators()` | `esg_indicators.json` (ESG_ChiTieu) | `GET /api/v1/esg/indicators` |
-| `analyzePrivate(file, { onStage, onProgress, signal })` | PDF: đọc / OCR ngay trong trình duyệt (`lib/ocr`, import động); Excel: `private_sample.json` (Private_Sample) | `POST /api/v1/private/analyze` (multipart) |
+| `analyzePrivate(file, { onStage, onProgress, signal })` | PDF: đọc / OCR ngay trong trình duyệt (`lib/ocr`, import động); chỉ nhận PDF | `POST /api/v1/private/analyze` (multipart) |
 
 Trang không gọi thẳng nhiều hàm lẻ mà dùng `getOverviews()` / `getOverview(ticker)` trong `lib/overview.ts`.
 
@@ -174,9 +172,8 @@ Khi sửa file Excel, chạy `npm test` để chắc số liệu vẫn nhất qu
 | Hạng mục MVP (mock) | Thay bằng | Ghi chú |
 |---|---|---|
 | File Excel → JSON tĩnh | FastAPI đọc cùng file Excel / Postgres | Giữ nguyên schema JSON (DATA.md §5); đặt `NEXT_PUBLIC_USE_MOCK=false` |
-| `portfolio.json` | FastAPI `POST /api/v1/portfolio/optimize` → SciPy/COBYLA | Code Python nhóm đã có, chỉ cần bọc API |
+| `financial_engine.json` → `/portfolio` | Optimizer có Σ (cần chuỗi giá tháng) + QUBO/QAOA | Hệ số λ chưa chốt |
 | Solver cổ điển | Qiskit (QAOA/VQE) qua cùng endpoint, thêm tham số `solver: "classical" \| "qaoa"` | UI đã có Select solver – chỉ cần bỏ `disabled` ở mục QAOA (`WeightSliders.tsx`) |
-| `scenarios.json` (slider chọn kịch bản gần nhất) | Gọi optimize trực tiếp với α β γ δ | Sửa `PortfolioOptimizer` gọi API thay vì `nearestScenario()` |
 | Sheet `OSINT` | Crawler (CafeF, Vietstock, SSC, Tổng cục Thuế) + NLP phân loại | Lưu vào Postgres/Supabase |
 | Sheet `ESG_Evidence` (bằng chứng) | LLM + RAG đối chiếu Vietnam Green Taxonomy | Trả về đoạn trích + nguồn |
 | OCR trong trình duyệt (Cổng 2) | Giữ nguyên, hoặc OCR phía máy chủ (PyMuPDF/pdfplumber + Tesseract/PaddleOCR) cho tệp lớn + xoá file sau xử lý | Nhánh gọi `POST /api/v1/private/analyze` đã viết sẵn; backend trả cùng `PrivateAnalysis` (kể cả `extraction`) và nên trả tiến độ (SSE) để giữ `onStage` / `onProgress` |

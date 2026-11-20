@@ -54,7 +54,7 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 
-# dữ liệu sinh từ data/QuantumRegTech_Data.xlsx (npm run data) – dùng chung cho Next.js và FastAPI
+# dữ liệu sinh từ data/QuantumRegTech_Input_Data_final.xlsx (npm run data) – dùng chung cho Next.js và FastAPI
 /data/generated/
 # vị trí cũ (trước khi chuyển sang data/generated) – tránh commit nhầm file cũ còn trong máy
 /src/data/

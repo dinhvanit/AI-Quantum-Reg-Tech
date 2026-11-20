@@ -3,16 +3,16 @@
 Ngữ cảnh cho Claude Code khi làm việc trong repo này.
 
 ## Dự án
-Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu danh mục cho 4 DN F&B niêm yết: **VNM, SAB, MCM, SBT**. Đội QuantumRegTech – AI-Quantum Challenge 2026.
+Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu danh mục cho 9 DN F&B niêm yết: **VNM, MCH, MCM, SBT, QNS, KDC, PAN, IDP, SAB** (năm dữ liệu 2021–2024 → dự báo 2022–2025). Đội QuantumRegTech – AI-Quantum Challenge 2026.
 
 **Giai đoạn hiện tại: demo nhà đầu tư + nền tảng agent.** Dữ liệu chuẩn vẫn là file Excel. Trạng thái thật của từng tính năng: `docs/DEMO_STATUS.md`; ưu tiên tiếp theo: `docs/IMPLEMENTATION_ROADMAP.md` (P0 ổn định AI → P1 reviewer/audit → P2 optimizer thật).
 
 | Phần | Đã chạy thật | Chưa có / vẫn mô phỏng |
 |---|---|---|
-| Tài chính | CAPM, Altman X1–X5/Z, RFin tính lại từ workbook (`scripts/build-data.mjs`) | Dữ liệu là lịch sử (BCTC 2024, giá 2025), không phải feed live |
-| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; Firecrawl tìm sự kiện xử phạt (4 truy vấn/mã), Jina Reader dự phòng đọc nội dung, Groq/Gemini đề xuất phân loại có quote khớp. Route Next.js chỉ proxy – không có bản OSINT thứ hai | Duyệt chỉ preview trong phiên; không lưu audit, không cập nhật POSINT chính thức |
+| Tài chính | CAPM, Altman X1–X5/Z, R_fin, P_OSINT, ESG percentile tính lại từ ô số gốc và đối chiếu với workbook (`scripts/build-financial-engine-data.mjs`) | Dữ liệu lịch sử theo năm, không phải feed live; các màn hình hồ sơ dùng năm mới nhất (2024) |
+| OSINT (Cổng 1) | LangGraph `discover → graph_enrichment → extract → classify → validate`; chỉ dùng Firecrawl Agent API, prompt một câu theo năm dữ liệu t (sự kiện năm t → dự báo t+1). Sự kiện đã duyệt trong workbook (`OSINT_Events`, `Include = 1`) dùng thẳng; sự kiện mới người dùng chấp nhận + chọn mức ở `/portfolio` → R_fin,total và tỷ trọng đổi trong phiên. Đọc lại nguồn (`OSINT_VERIFY_SOURCES`) và Jina tắt mặc định. Chạy dạng job (POST trả `scan_id`, client poll) | Chấp nhận chỉ trong phiên; không lưu audit; job lưu trong RAM (1 worker) |
 | Cổng 2 (PDF) | PDF + OCR + parser quy tắc trong trình duyệt (`src/lib/ocr/`); LLM trích xuất **opt-in** (`backend/app/agents/document_graph.py`) | Không RAG, không lưu field đã duyệt |
-| Danh mục / Lượng tử | Chọn kịch bản dựng sẵn gần nhất từ workbook | Chưa có optimizer covariance, chưa có QAOA/Qiskit |
+| Danh mục / Lượng tử | `/portfolio`: chọn năm dữ liệu t và các mã, phân bổ theo mức ưu tiên (lợi suất, ESG, an toàn), đối chiếu với lợi suất thực tế t+1 | Chưa có Σ (thiếu chuỗi giá tháng), hệ số QUBO chưa chốt, chưa có QAOA/Qiskit |
 | Neo4j | Adapter chỉ đọc đã kết nối | Graph rỗng (seed là lệnh chủ động, có cờ ghi) |
 
 6 màn hình: `/`, `/stocks`, `/company/[ticker]` (Cổng 1), `/private` (Cổng 2), `/portfolio`, `/report/[ticker]` (chi tiết: `docs/UI_DESIGN.md` §4, §6).
@@ -21,7 +21,7 @@ Nền tảng RegTech (AI + Quantum) đánh giá tín nhiệm ESG và tối ưu d
 
 ## Kiến trúc
 ```
-data/QuantumRegTech_Data.xlsx ─(npm run data)─► data/generated/*.json ─┬─► src/lib/api.ts ─► UI (Next.js)
+data/QuantumRegTech_Input_Data_final.xlsx ─(npm run data)─► data/generated/*.json ─┬─► src/lib/api.ts ─► UI (Next.js)
                                                                         └─► backend/ (FastAPI) ─► /api/v1/*
 ```
 - **Frontend** (`src/`): Next.js. Route server `src/app/api/*` (universe, osint/scan, private/extract) là proxy cùng origin tới FastAPI.
@@ -44,9 +44,9 @@ data/QuantumRegTech_Data.xlsx ─(npm run data)─► data/generated/*.json ─�
 npm run dev       # localhost:3000
 npm run build
 npm run lint
-npm run data      # data/QuantumRegTech_Data.xlsx → data/generated/*.json (tự chạy trước dev/build/test)
+npm run data      # data/QuantumRegTech_Input_Data_final.xlsx → financial_engine.json → data/generated/*.json (tự chạy trước dev/build/test)
 npm run assets    # tài nguyên OCR (pdf.js, Tesseract, mô hình vie) → public/vendor (tự chạy trước dev/build)
-npm test          # unit test (Vitest) – đối chiếu số liệu với Phụ lục B
+npm test          # unit test (Vitest) – đối chiếu số liệu với workbook (TINH_TONG_HOP)
 npm run test:e2e  # e2e (Playwright) – lần đầu chạy: npx playwright install chromium
 
 # Backend (terminal riêng, sau npm run data)
@@ -56,9 +56,9 @@ backend/.venv/bin/pip install -r backend/requirements-dev.txt && (cd backend && 
 ```
 
 ## Quy tắc
-1. Component **chỉ lấy dữ liệu qua `src/lib/api.ts`**, không import trực tiếp `@data/*` (`data/generated/*.json`). Dữ liệu sửa ở **`data/QuantumRegTech_Data.xlsx`** – không sửa `data/generated/*.json` (file sinh ra, không commit).
+1. Component **chỉ lấy dữ liệu qua `src/lib/api.ts`**, không import trực tiếp `@data/*` (`data/generated/*.json`). Dữ liệu sửa ở **`data/QuantumRegTech_Input_Data_final.xlsx`** (chỉ ô số gốc; sheet kết quả chỉ để đối chiếu) – không sửa `data/generated/*.json` (file sinh ra, không commit).
 2. Types trong `src/lib/types.ts` phải khớp schema ở `docs/DATA.md` §5. Đổi schema → cập nhật cả types, `scripts/build-data.mjs`, `docs/DATA.md` và hợp đồng phía backend (`backend/app/domain/contracts.py`) nếu endpoint liên quan.
-3. **Không tự bịa số liệu tài chính.** Chỉ dùng số trong file Excel (nguồn: Phụ lục B + AQ_Input); ô `TODO` để nguyên và hiển thị "—". Mâu thuẫn giữa các nguồn → ghi vào sheet `Cho_xac_nhan`, không tự chọn. Mã mới thiếu dữ liệu → `pending_data`, không sinh chỉ số.
+3. **Không tự bịa số liệu tài chính.** Chỉ dùng số trong workbook `data/QuantumRegTech_Input_Data_final.xlsx`; ô `TODO` để nguyên và hiển thị "—". Số nghi sai → báo nhóm tài chính sửa trong workbook, không tự sửa. Mã mới thiếu dữ liệu → `pending_data`, không sinh chỉ số.
 4. **LLM không tính** tỷ số, điểm, tỷ trọng, mức phạt hay ràng buộc – chỉ trích xuất/phân loại/giải thích có trích dẫn. Số tài chính do code tất định tính.
 5. Đầu ra AI (OSINT, trích xuất PDF) là **đề xuất**: phải có quote khớp nguồn (và trang với PDF) mới được dùng; vẫn cần người duyệt. Không gọi bài báo là "vi phạm đã xác nhận". Provider lỗi → giữ baseline/fallback và báo đúng nguyên nhân, không giả kết quả AI.
 6. Dữ liệu workbook dùng thay cho kết quả live phải gắn nhãn `DEMO DATA`; phân biệt rõ dữ liệu demo/live, công khai/riêng tư, ước lượng/công bố.
@@ -67,7 +67,7 @@ backend/.venv/bin/pip install -r backend/requirements-dev.txt && (cd backend && 
 9. Định dạng số kiểu Việt qua `src/lib/format.ts` (`9,95%`, `50,9 tỷ`).
 10. Mỗi trang có trạng thái loading (Skeleton), empty, error.
 11. UI tiếng Việt; thuật ngữ chuyên môn có thể kèm tiếng Anh trong ngoặc.
-12. Mọi tính năng lượng tử hiển thị nhãn "Mô phỏng / Vòng 2"; không tuyên bố đã chạy QAOA hay trên phần cứng lượng tử. Slider danh mục chỉ chọn kịch bản có sẵn – không gọi là optimizer/backtest.
+12. Mọi tính năng lượng tử hiển thị nhãn "Mô phỏng / Vòng 2"; không tuyên bố đã chạy QAOA hay trên phần cứng lượng tử. Phân bổ ở `/portfolio` là theo mức ưu tiên – không gọi là Markowitz/QAOA.
 13. Ưu tiên component shadcn/ui có sẵn trước khi tự viết.
 14. Đổi số liệu hoặc logic tính → chạy `npm test`; đổi UI/luồng → chạy `npm run test:e2e` và cập nhật `tests/e2e` nếu cần; sửa `backend/app/agents` → chạy pytest backend.
 15. Thay đổi đáng kể (màn hình, schema, token, quy tắc, trạng thái tính năng) → cập nhật `docs/` tương ứng (đặc biệt `DEMO_STATUS.md`).

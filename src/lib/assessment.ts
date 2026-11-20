@@ -18,7 +18,7 @@ export function assess({ company, zscore, esg, events, posint, rfinTotal }: Comp
     `${company.ticker} có Z = ${formatNumber(zscore.z)}, thuộc vùng ${zscore.zone === "safe" ? "an toàn (Safe)" : zscore.zone === "grey" ? "cảnh báo (Grey)" : "kiệt quệ (Distress)"} → RFin,Base = ${formatNumber(zscore.rfinBase)}.`,
     events.length > 0
       ? `Ghi nhận ${events.length} sự kiện OSINT đang hiệu lực (POSINT +${formatNumber(posint)}).`
-      : "Không ghi nhận sự kiện OSINT trong 36 tháng.",
+      : "Không ghi nhận sự kiện OSINT tính vào năm dữ liệu này.",
     esg.greenwashingRisk !== "TODO"
       ? `Rủi ro tẩy xanh: ${GREENWASHING_LABEL[esg.greenwashingRisk].toLowerCase()}; ESGi = ${formatNumber(esg.esgScore, 4)}.`
       : `ESGi = ${formatNumber(esg.esgScore, 4)}.`,
@@ -28,7 +28,7 @@ export function assess({ company, zscore, esg, events, posint, rfinTotal }: Comp
   const level: AltmanZone =
     zscore.zone === "distress" || rfinTotal >= 0.5
       ? "distress"
-      : events.length > 0 || esg.greenwashingRisk === "high"
+      : zscore.zone === "grey" || events.length > 0 || esg.greenwashingRisk === "high"
         ? "grey"
         : "safe";
   const label = { distress: "Rủi ro cao", grey: "Cần theo dõi", safe: "Đạt" }[level];

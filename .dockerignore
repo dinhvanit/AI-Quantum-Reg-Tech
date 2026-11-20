@@ -18,4 +18,6 @@ backend/.pytest_cache
 backend/tests
 backend/universe.sqlite3
 **/__pycache__
-data/QuantumRegTech_Data.xlsx
+data/*.xlsx
+!data/QuantumRegTech_Input_Data_final.xlsx
+data/generated

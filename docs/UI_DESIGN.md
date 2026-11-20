@@ -124,7 +124,7 @@ Luồng 4 bước (stepper, component `UploadStepper`, trạng thái `idle → p
 1. **Tải lên** – dropzone kéo-thả / bấm chọn (PDF, XLSX, XLS; tối đa 20 MB; báo lỗi ngay khi sai định dạng / quá lớn / tệp rỗng) + checkbox cam kết bảo mật. Nút "Bắt đầu phân tích" chỉ bật khi có tệp **và** đã tick.
 2. **Xử lý** – 4 bước `Đọc tài liệu / OCR → Chuẩn hoá chỉ tiêu → Tính Z'-Score → Quét OSINT`, mỗi bước có trạng thái Chờ / Đang chạy / Hoàn tất và dòng tiến độ chi tiết ("Trang 2/2: nhận dạng ký tự (OCR)…"). Nút **"Huỷ & xoá tệp"** dừng (AbortController) và quay về bước 1.
    - **PDF – OCR/parser + AI Agent opt-in:** trang có lớp chữ → đọc bằng pdf.js; trang scan → OCR bằng Tesseract tiếng Việt. Parser theo mã số/tên nhãn là baseline; nếu người dùng đồng ý riêng, LangGraph + LangChain LLM trích xuất theo schema 9 trường và quote validation để đọc nhãn không theo một template cứng. Chỉ trường có quote/trang khớp mới được dùng tính Z'. PDF tối đa 12 trang đầu. Quét OSINT/ESG nội bộ chưa kết nối ở cổng này.
-   - **Excel:** chưa hỗ trợ trích xuất → 4 bước giả lập rồi trả kết quả mẫu (sheet `Private_Sample`).
+   - **Excel:** chưa hỗ trợ → bị từ chối ngay khi chọn tệp (Cổng 2 chỉ nhận PDF).
    - Lỗi: PDF hỏng → "Tệp PDF bị hỏng hoặc không hợp lệ."; PDF có mật khẩu → yêu cầu gỡ mật khẩu.
 3. **Kết quả** – thẻ **"Chỉ tiêu trích xuất từ báo cáo"** (`ExtractionTable`): 9 chỉ tiêu, mã số, giá trị, trang, cách đọc (lớp chữ / OCR), **dòng gốc** để đối chiếu; cảnh báo khi thiếu chỉ tiêu, khi Tổng tài sản ≠ Nợ phải trả + VCSH (lệch > 1%), hoặc khi số có thể bị đọc sai cột. Sau đó tái dùng component Cổng 1 (`ZScoreGauge` mô hình Z', `XTable`, `EsgRadar`, `OsintTimeline`, `RiskFormula`). Ngay khi xử lý xong, tham chiếu tệp gốc, ảnh trang, worker pdf.js/Tesseract đều bị huỷ; chỉ giữ tên + dung lượng để ghi nhật ký. Nút "Xác nhận xoá dữ liệu gốc" → bước 4.
 4. **Kết thúc phiên** – UI cho biết ứng dụng đã bỏ tham chiếu tệp khỏi phiên; không tuyên bố xóa khỏi browser memory, logs, caches hoặc hạ tầng. Có thể in báo cáo và xử lý hồ sơ khác.
@@ -133,7 +133,6 @@ Phía trên stepper có 3 thẻ nguyên tắc: PDF/OCR cục bộ, dọn tham ch
 
 **Tệp thử:** `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ) và `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (chỉ ảnh → OCR) – BCTC của **doanh nghiệp giả định** "CTCP Thực phẩm Mẫu QRT", đáp án ở `bctc-mau-qrt-2024.expected.json` (Z' ≈ 2,52 → Grey). Tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 
-> Khi tải **Excel**, kết quả là DN mẫu **CTCP Chuỗi Sữa TH** (sheet `Private_Sample`); chưa có BCTC của TH nên Z', ESG hiện "—" kèm Alert "Kết quả mẫu chưa có số liệu". Khi tải **PDF BCTC**, Z' được tính thật từ tệp.
 
 > Màn này **chưa có trong mockup Vòng 1** – ưu tiên làm để trả lời câu hỏi về bảo mật.
 
@@ -146,10 +145,9 @@ Phía trên stepper có 3 thẻ nguyên tắc: PDF/OCR cục bộ, dọn tham ch
 | So sánh | `CompareTable` trọng số workbook Baseline vs ESG-aware: tỷ trọng, CAPM kỳ vọng, return lịch sử một kỳ; `BacktestChart` bar |
 | Tab "Lõi Lượng tử" | `QuboHeatmap` ma trận Q, thẻ thông số: số qubit, bit rời rạc/tài sản, độ sâu mạch dự kiến – nhãn "Mô phỏng / Vòng 2" |
 
-Khi kéo slider: dùng kịch bản tính sẵn gần nhất trong `scenarios.json` (khoảng cách Euclid trên α β γ δ – `nearestScenario()`; hoặc gọi FastAPI nếu có); hiển thị skeleton 600ms.
+Trang `/portfolio` (PortfolioBuilder): chọn năm dữ liệu t (2021–2024), mã và mức ưu tiên; tỷ trọng tính lại ngay trong trình duyệt từ `financial_engine.json`, so lợi suất CAPM năm t với lợi suất thực tế t+1. Card "Kiểm tra OSINT năm t" cho phép quét Firecrawl Agent và chấp nhận sự kiện theo mức.
 
 Ghi chú triển khai:
-- Slider mặc định α = β = γ = δ = 1 (kịch bản ESG-aware). `scenarios.json` hiện có 2 kịch bản (γ = δ = 0 → Baseline; γ = δ = 1 → ESG-aware) – cần thêm kịch bản từ code Python để slider "mượt" hơn.
 - 2 thẻ KPI tính Σ wᵢ × CAPM và Σ wᵢ × return từ hai mốc giá theo kịch bản đang chọn. Build script tính/đối chiếu hai portfolio summary workbook. Portfolio table có hai scenario workbook; slider không chạy solver mới. Mốc ngày cho giá đầu/cuối hiện thiếu nên không gọi kết quả là rolling/out-of-sample backtest.
 - Tab "Lõi Lượng tử": số qubit 16, bit/tài sản 4, độ sâu mạch "—"; `QuboHeatmap` hiện trạng thái rỗng vì `qubo.matrix` = TODO.
 
