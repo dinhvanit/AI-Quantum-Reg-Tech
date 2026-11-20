@@ -5,7 +5,7 @@
 
 ## Mục tiêu của MVP
 
-Hoàn thiện **giao diện sản phẩm** chạy trên **dữ liệu mẫu** trong file Excel `data/QuantumRegTech_Data.xlsx` (Phụ lục B hồ sơ Vòng 1 + BCTC/giá từ file nhập liệu của nhóm tài chính), để demo trọn luồng người dùng:
+Hoàn thiện giao diện thẩm định và danh mục đầu tư bằng dữ liệu tài chính có nguồn. Danh sách cổ phiếu và trang tạo danh mục dùng bộ máy tính tài chính cho 9 mã; một số màn hình hồ sơ cũ vẫn giữ nguồn dữ liệu hiện hữu:
 
 `Danh sách cổ phiếu → Hồ sơ & OSINT → Tối ưu danh mục → Upload PDF nội bộ → Xuất báo cáo thẩm định`
 
@@ -54,13 +54,14 @@ Hoàn thiện **giao diện sản phẩm** chạy trên **dữ liệu mẫu** tr
 | Danh sách cổ phiếu | `/stocks` | ✅ hiển thị universe có dữ liệu; preset demo 4 mã |
 | Cổng 2 – Nạp dữ liệu bảo mật | `/private` | ✅ đọc PDF + OCR BCTC ngay trên trình duyệt → Z' (ESG, OSINT của DN tải lên: Vòng 2) |
 | Tối ưu danh mục + Lõi Lượng tử | `/portfolio` | ✅ |
+| Bộ máy tài chính dữ liệu lịch sử | `/financial-engine` | ✅ tính lại 9 mã 2021–2024, đối chiếu workbook |
 | Báo cáo thẩm định (in PDF) | `/report/[ticker]` | ✅ |
 
 Số liệu còn thiếu (hiển thị "—") và các điểm cần nhóm tài chính quyết định: [`docs/DATA.md` mục 6](docs/DATA.md).
 
 ## Dữ liệu
 
-Nguồn dữ liệu duy nhất: **`data/QuantumRegTech_Data.xlsx`**. Sửa số liệu trong file này → lưu → `npm run data && npm test`. Các file `data/generated/*.json` (dùng chung cho Next.js và FastAPI) được sinh tự động (trước `dev` / `build` / `test`) và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md).
+Danh sách và trang tạo danh mục dùng bộ dữ liệu 9 doanh nghiệp giai đoạn 2021–2024. `npm run data` tính và đối chiếu chỉ số, sau đó API `/api/v1/financial-engine` cung cấp cho giao diện. Trang danh mục tự tính tỷ trọng đề xuất theo lợi suất kỳ vọng, ESG, mức an toàn tài chính và giới hạn tập trung. Chưa có chuỗi giá đủ dày để tính ma trận hiệp phương sai và chạy Markowitz. Các file `data/generated/*.json` được sinh tự động và không commit. Chi tiết: [`docs/DATA.md`](docs/DATA.md) và [`docs/FINANCIAL_ENGINE.md`](docs/FINANCIAL_ENGINE.md).
 
 **Thử Cổng 2:** mở `/private`, tải `tests/fixtures/bctc-mau-qrt-2024-scan.pdf` (bản scan → OCR) hoặc `tests/fixtures/bctc-mau-qrt-2024.pdf` (có lớp chữ). Đây là BCTC của doanh nghiệp **giả định**; đáp án ở `tests/fixtures/bctc-mau-qrt-2024.expected.json`. Tạo lại bằng `node scripts/make-sample-pdf.mjs`.
 

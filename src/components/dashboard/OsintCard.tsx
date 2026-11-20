@@ -25,7 +25,7 @@ export function OsintCard({ items }: { items: CompanyOverview[] }) {
       description="Sự kiện pháp lý / môi trường trong 36 tháng"
       action={
         <span className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-risk-grey" /> Dữ liệu mẫu
+          <span className="size-1.5 rounded-full bg-risk-grey" /> Sự kiện hiện có
         </span>
       }
     >

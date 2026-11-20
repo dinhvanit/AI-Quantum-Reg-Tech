@@ -1,23 +1,24 @@
 # Dữ liệu & Hợp đồng API – QuantumRegTech MVP
 
-> Thay cho `MOCK_DATA.md` (đã xoá). Nguồn dữ liệu duy nhất của app là file Excel **`data/QuantumRegTech_Data.xlsx`**.
+> Danh sách cổ phiếu và trang tạo danh mục hiện lấy dữ liệu 9 mã từ financial-engine API. Một số màn hình hồ sơ và báo cáo vẫn dùng nguồn dữ liệu trước đó.
 > Schema JSON ở mục 5 **chính là hợp đồng API** cho Vòng 2: khi có backend thật, endpoint trả đúng cấu trúc này → UI không phải sửa.
 
 ## 1. Luồng dữ liệu
 
 ```
-data/QuantumRegTech_Data.xlsx ──(npm run data · scripts/build-data.mjs)──► data/generated/*.json ──┬─► src/lib/api.ts ──► UI (Next.js)
-                                                                                         └─► backend/ (FastAPI, GENERATED_DATA_DIR)
+data/QuantumRegTech_Data.xlsx ──(scripts/build-data.mjs)─────────────────► data/generated/*.json ──┬─► src/lib/api.ts ──► UI demo (Next.js)
+                                                                                                  └─► backend/ (FastAPI demo)
+Workbook dữ liệu tài chính ──(scripts/build-financial-engine-data.mjs)──► financial_engine.json ──► GET /api/v1/financial-engine
         ▲ nhóm tài chính sửa                    tự chạy trước dev / build / test          (không commit)
 ```
 
-- **Chỉ sửa file Excel**, không sửa `data/generated/*.json` (bị ghi đè và nằm trong `.gitignore`).
-- `npm run data` tự chạy qua `predev`, `prebuild`, `pretest` → Vercel build cũng tự sinh JSON.
+- **Chỉ sửa workbook nguồn**, không sửa `data/generated/*.json` (bị ghi đè và nằm trong `.gitignore`).
+- `npm run data` sinh dữ liệu demo hiện tại và financial-engine dataset mới; tự chạy qua `predev`, `prebuild`, `pretest` → Vercel build cũng tự sinh JSON.
 - Component **không bao giờ** `import` trực tiếp từ `data/generated/` (alias `@data/*`) – luôn qua `src/lib/api.ts`. Ngoại lệ: route server `src/app/api/osint/scan` đọc sự kiện workbook để trả `DEMO DATA` khi FastAPI không chạy.
 - Script báo lỗi rõ ràng khi: thiếu sheet, ô cần số lại chứa chữ, công thức chưa có kết quả (file sửa bằng công cụ không tính công thức → mở bằng Excel/LibreOffice rồi lưu lại).
 
 ### Quy trình cập nhật số liệu
-1. Mở `data/QuantumRegTech_Data.xlsx` bằng Excel hoặc LibreOffice, sửa ô đầu vào (không sửa ô công thức nền xám).
+1. Dữ liệu của danh sách cổ phiếu và danh mục được tính lại từ các sheet đầu vào của bộ dữ liệu tài chính. Các sheet kết quả chỉ dùng để đối chiếu.
 2. Lưu file (để lưu kết quả công thức).
 3. `npm run data && npm test` – unit test đối chiếu lại với số công bố ở mục 2.
 4. `npm run dev` để xem trên UI, rồi commit file Excel.

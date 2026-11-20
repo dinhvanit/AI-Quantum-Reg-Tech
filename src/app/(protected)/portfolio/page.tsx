@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import { PortfolioOptimizer } from "@/components/portfolio/PortfolioOptimizer";
-import { getPortfolio, getScenarios } from "@/lib/api";
-import { getOverviews } from "@/lib/overview";
+import { PortfolioBuilder } from "@/components/portfolio/PortfolioBuilder";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getFinancialEngineData } from "@/lib/financial-engine";
 
-export const metadata: Metadata = { title: "Tối ưu danh mục | QuantumRegTech" };
+export const metadata: Metadata = { title: "Tạo danh mục đầu tư | QuantumRegTech" };
 
 export default async function PortfolioPage() {
-  const [items, portfolio, scenarios] = await Promise.all([getOverviews(), getPortfolio(), getScenarios()]);
-
-  if (items.length === 0) {
-    return <p className="py-20 text-center text-sm text-muted-foreground">Chưa có doanh nghiệp nào để tối ưu danh mục.</p>;
+  try {
+    const { records } = await getFinancialEngineData(2024);
+    return <PortfolioBuilder records={records} />;
+  } catch (error) {
+    return <Card><CardHeader><CardTitle>Chưa tải được dữ liệu danh mục</CardTitle><CardDescription>{error instanceof Error ? error.message : "Không kết nối được dịch vụ dữ liệu."}</CardDescription></CardHeader></Card>;
   }
-
-  return <PortfolioOptimizer items={items} portfolio={portfolio} scenarios={scenarios} />;
 }

@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "./Sidebar";
 import { logout } from "@/app/auth-actions";
 
 const today = new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" });
+const FINANCIAL_ENGINE_TICKERS = new Set(["MCH", "QNS", "KDC", "PAN", "IDP"]);
 
 type HeaderProps = {
   user: {
@@ -24,7 +25,9 @@ export function Header({ user }: HeaderProps) {
   // Cổng 1 có badge trong header DN của trang; Cổng 2 hiển thị ở đây.
   const gateway = pathname.startsWith("/private") ? 2 : null;
   const title = NAV_ITEMS.find((n) => n.match(pathname))?.label ?? "QuantumRegTech";
-  const displayName = user.name || user.email?.split("@")[0] || "Tài khoản";
+  const isLocalDemoAccount = user.email?.endsWith("@ai-quantum-reg-tech.local") ?? false;
+  const displayName = isLocalDemoAccount ? "Nhà đầu tư" : user.name || user.email?.split("@")[0] || "Tài khoản";
+  const displayEmail = isLocalDemoAccount ? null : user.email;
   const initials = displayName
     .trim()
     .split(/\s+/)
@@ -36,7 +39,7 @@ export function Header({ user }: HeaderProps) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const ticker = query.trim().toUpperCase();
-    if (ticker) router.push(`/company/${ticker}`);
+    if (ticker) router.push(FINANCIAL_ENGINE_TICKERS.has(ticker) ? `/financial-engine#${ticker}` : `/company/${ticker}`);
   }
 
   return (
@@ -65,17 +68,17 @@ export function Header({ user }: HeaderProps) {
         <>
           <div
             className="flex min-w-0 shrink-0 items-center gap-2"
-            aria-label={`Tài khoản ${displayName}${user.email ? `, ${user.email}` : ""}`}
-            title={user.email || displayName}
+            aria-label={`Tài khoản ${displayName}${displayEmail ? `, ${displayEmail}` : ""}`}
+            title={displayEmail || displayName}
           >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
               {initials || "U"}
             </span>
             <span className="hidden min-w-0 sm:block">
               <span className="block max-w-36 truncate text-xs font-semibold">{displayName}</span>
-              {user.email && (
+              {displayEmail && (
                 <span className="block max-w-36 truncate text-[11px] text-muted-foreground">
-                  {user.email}
+                  {displayEmail}
                 </span>
               )}
             </span>
