@@ -95,7 +95,7 @@ export function UploadStepper() {
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
             <Checkbox id="llm-consent" checked={llmConsent} onCheckedChange={(v) => setLlmConsent(v === true)} className="mt-0.5" />
             <Label htmlFor="llm-consent" className="text-xs leading-relaxed font-normal">
-              Bật AI Agent cho buổi demo: tôi cho phép gửi phần văn bản OCR/trích xuất (không gửi file PDF gốc) tới nhà cung cấp LLM đang cấu hình để nhận diện chỉ tiêu. Chỉ dùng tài liệu mẫu hoặc tài liệu tôi được phép chia sẻ; kết quả phải có quote/trang nguồn để đối chiếu.
+              Bật trợ lý AI: tôi cho phép gửi phần văn bản OCR/trích xuất (không gửi file PDF gốc) tới nhà cung cấp đang cấu hình để nhận diện chỉ tiêu. Chỉ dùng tài liệu bạn có quyền chia sẻ; kết quả phải có trích dẫn và số trang để đối chiếu.
             </Label>
           </div>
           <div className="flex justify-end">

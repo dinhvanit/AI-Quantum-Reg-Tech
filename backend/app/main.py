@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import config first so backend/.env (or the legacy root .env.local) is loaded before service modules.
 from app.core.config import CORS_ORIGINS  # noqa: E402
-from app.api.routes import analysis, companies, osint, private  # noqa: E402
+from app.api.routes import analysis, companies, financial_engine, osint, private  # noqa: E402
 
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ def health() -> dict:
 
 
 app.include_router(companies.router)
+app.include_router(financial_engine.router)
 app.include_router(analysis.router)
 app.include_router(osint.router)
 app.include_router(private.router)

@@ -2,25 +2,44 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GatewayBadge } from "./GatewayBadge";
 import { NAV_ITEMS } from "./Sidebar";
+import { logout } from "@/app/auth-actions";
 
 const today = new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" });
+const FINANCIAL_ENGINE_TICKERS = new Set(["MCH", "QNS", "KDC", "PAN", "IDP"]);
 
-export function Header() {
+type HeaderProps = {
+  user: {
+    name?: string | null;
+    email?: string | null;
+  };
+};
+
+export function Header({ user }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState("");
   // Cổng 1 có badge trong header DN của trang; Cổng 2 hiển thị ở đây.
   const gateway = pathname.startsWith("/private") ? 2 : null;
   const title = NAV_ITEMS.find((n) => n.match(pathname))?.label ?? "QuantumRegTech";
+  const isLocalDemoAccount = user.email?.endsWith("@ai-quantum-reg-tech.local") ?? false;
+  const displayName = isLocalDemoAccount ? "Nhà đầu tư" : user.name || user.email?.split("@")[0] || "Tài khoản";
+  const displayEmail = isLocalDemoAccount ? null : user.email;
+  const initials = displayName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const ticker = query.trim().toUpperCase();
-    if (ticker) router.push(`/company/${ticker}`);
+    if (ticker) router.push(FINANCIAL_ENGINE_TICKERS.has(ticker) ? `/financial-engine#${ticker}` : `/company/${ticker}`);
   }
 
   return (
@@ -44,6 +63,38 @@ export function Header() {
           className="h-9 w-44 bg-background pl-8 sm:w-56"
         />
       </form>
+
+      {!pathname.startsWith("/login") && (
+        <>
+          <div
+            className="flex min-w-0 shrink-0 items-center gap-2"
+            aria-label={`Tài khoản ${displayName}${displayEmail ? `, ${displayEmail}` : ""}`}
+            title={displayEmail || displayName}
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+              {initials || "U"}
+            </span>
+            <span className="hidden min-w-0 sm:block">
+              <span className="block max-w-36 truncate text-xs font-semibold">{displayName}</span>
+              {displayEmail && (
+                <span className="block max-w-36 truncate text-[11px] text-muted-foreground">
+                  {displayEmail}
+                </span>
+              )}
+            </span>
+          </div>
+          <form action={logout}>
+            <button
+              type="submit"
+              aria-label="Đăng xuất"
+              title="Đăng xuất"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="size-4" />
+            </button>
+          </form>
+        </>
+      )}
     </header>
   );
 }

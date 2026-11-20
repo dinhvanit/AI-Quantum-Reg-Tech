@@ -8,7 +8,7 @@ const PRINCIPLES = [
   {
     icon: FileLock2,
     title: "Xử lý PDF trong trình duyệt",
-    body: "Đọc lớp chữ và OCR chạy trên trình duyệt ở bản demo hiện tại.",
+    body: "Đọc lớp chữ và nhận dạng ký tự chạy trên trình duyệt.",
   },
   {
     icon: Trash2,

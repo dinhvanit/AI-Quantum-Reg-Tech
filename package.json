@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "data": "node scripts/build-data.mjs",
+    "data": "node scripts/build-data.mjs && node scripts/build-financial-engine-data.mjs",
     "assets": "node scripts/copy-ocr-assets.mjs",
     "postinstall": "npm run data && npm run assets",
     "predev": "npm run data && npm run assets",
@@ -14,17 +14,22 @@
     "lint": "eslint",
     "pretest": "npm run data",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:seed-demo": "node --env-file=.env.local scripts/seed-demo-user.mjs"
   },
   "dependencies": {
+    "@auth/neon-adapter": "^1.11.3",
     "@base-ui/react": "^1.8.0",
+    "@neondatabase/serverless": "^1.2.1",
     "@tesseract.js-data/vie": "^1.0.0",
+    "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^1.48.0",
     "next": "16.3.6",
+    "next-auth": "^5.0.0-beta.32",
     "next-themes": "^0.4.6",
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.8",

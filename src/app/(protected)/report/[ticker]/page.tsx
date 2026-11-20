@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FlaskConical } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { XTable } from "@/components/company/XTable";
 import { ZoneBadge } from "@/components/dashboard/ZoneBadge";
@@ -78,9 +78,6 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
             </h2>
             <p className="text-xs text-muted-foreground">Ngày lập: {today}</p>
           </div>
-          <Badge variant="outline" className="h-auto gap-1 border-risk-grey/40 px-2 py-0.5 text-[10px] text-risk-grey">
-            <FlaskConical /> Dữ liệu mẫu – PoC
-          </Badge>
         </header>
 
         <ReportSection n={1} title="Thông tin doanh nghiệp">
@@ -147,7 +144,7 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
           )}
         </ReportSection>
 
-        <ReportSection n={5} title="Sự kiện OSINT (36 tháng)">
+        <ReportSection n={5} title="Sự kiện công khai (36 tháng)">
           {allEvents.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5">
               {allEvents.map((e) => (
@@ -168,10 +165,10 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
 
         <ReportSection n={6} title="Khuyến nghị tỷ trọng">
           <p>
-            Mô hình ESG-aware ({formatBillion(portfolio.capital, 0)} VNĐ) phân bổ{" "}
+            Danh mục có tính đến ESG ({formatBillion(portfolio.capital, 0)} VNĐ) phân bổ{" "}
             <span className="font-mono font-bold">{formatPct(w, 1)}</span> ({formatBillion(w === undefined ? undefined : w * portfolio.capital)})
             cho {company.ticker}
-            {atFloor && " – mức sàn theo ràng buộc"}; Baseline Markowitz: <span className="font-mono">{formatPct(wBase, 1)}</span>.
+            {atFloor && " – mức sàn theo ràng buộc"}; Danh mục cân bằng Markowitz: <span className="font-mono">{formatPct(wBase, 1)}</span>.
           </p>
         </ReportSection>
 
@@ -188,14 +185,13 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
             <li>
               Ràng buộc tỷ trọng: {formatPct(portfolio.constraints.minWeight, 0)} ≤ wᵢ ≤ {formatPct(portfolio.constraints.maxWeight, 0)}, Σwᵢ = 100%.
             </li>
-            <li>Nguồn số liệu: {method.dataSource}.</li>
+            <li>Trường dữ liệu chưa được xác nhận hiển thị bằng “—”.</li>
           </ul>
         </ReportSection>
 
         <ReportSection n={8} title="Tuyên bố miễn trừ">
           <p className="text-muted-foreground">
-            Báo cáo được tạo tự động từ bản mẫu (PoC) phục vụ AI-Quantum Challenge 2026, sử dụng dữ liệu mẫu và chỉ mang tính minh hoạ.
-            Không phải khuyến nghị đầu tư. Các ô “—” là số liệu chưa được nhóm tài chính xác nhận.
+            Đây là báo cáo phân tích theo dữ liệu hiện có, không phải khuyến nghị đầu tư. Các ô “—” là số liệu chưa được xác nhận.
           </p>
         </ReportSection>
       </article>

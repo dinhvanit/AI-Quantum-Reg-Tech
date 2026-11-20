@@ -59,9 +59,9 @@ export function PrivateResult({ result }: { result: PrivateAnalysis }) {
       {hasTodo && (
         <Alert>
           <Info />
-          <AlertTitle>Kết quả mẫu chưa có số liệu</AlertTitle>
+          <AlertTitle>Chưa có số liệu được xác nhận</AlertTitle>
           <AlertDescription>
-            Hồ sơ DN chưa niêm yết mẫu (sheet <code>Private_Sample</code> trong <code>data/QuantumRegTech_Data.xlsx</code>) chưa có BCTC. Các ô hiển thị “—” thay vì số tự tạo.
+            Hồ sơ này chưa có báo cáo tài chính được cung cấp. Các ô chưa có dữ liệu hiển thị “—” và không được tự tạo.
           </AlertDescription>
         </Alert>
       )}

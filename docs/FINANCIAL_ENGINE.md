@@ -1,6 +1,6 @@
 # Financial Engine and Methodology
 
-**Status:** CAPM, price-period return, listed Altman Z/X1–X5, zone and RFin base are now recomputed in `scripts/build-data.mjs` from workbook input sheets and checked against the workbook's saved formula outputs. ESG score and portfolio weights remain workbook-provided because their recomputation needs unresolved methodology and/or price history.
+**Status:** `scripts/build-financial-engine-data.mjs` independently recalculates 36 company-year records and exposes them at `GET /api/v1/financial-engine`. The stock list and portfolio scenario builder use the 2024 records. The current builder produces preference-based suggested weights; a validated Markowitz optimizer still requires dated adjusted-price return series and approved investment-policy constraints.
 **Related:** [DATA.md](DATA.md), [spec data model](../specs/001-investor-due-diligence-demo/data-model.md)
 
 ## Rules for all calculations
@@ -94,7 +94,20 @@ POSINT is a policy penalty, not a probability. A news article alone cannot be pr
 
 ## Portfolio objective and constraints
 
-The intended objective is:
+The active scenario builder combines user priorities for expected return, ESG, and financial safety:
+
+```text
+uᵢ = pR × N(Rᵢ) + pE × N(ESGᵢ) + pS × (1 − N(RFinᵢ))
+qᵢ = exp(4 × uᵢ)
+```
+
+`N` min-max normalizes each input among the selected companies. The preference sliders are normalized to sum to one. The system distributes weights in proportion to `qᵢ` and reapplies a concentration cap: 35% per company for three or more selections, 55% for two, and 100% for a single selection. The amounts are rounded so displayed allocations add back to the entered capital.
+
+This is a transparent preference-based allocation for scenario exploration. It does not estimate covariance or claim to be a Markowitz optimum. The measured CAPM, ESG, and financial-risk inputs are historical workbook values; realized 2025 return is shown as an outcome, never as a forecast.
+
+The research target remains:
+
+For a future covariance-backed optimizer, the target objective is:
 
 ```text
 maximize F(W) = Σi wi(αRi + γESGi - δRFin_i) - β ΣiΣj wi wj σij
@@ -127,6 +140,21 @@ Every aggregate must list excluded/missing inputs and the selected time period. 
 - `npm run data` computes CAPM from `Params.rf`, `Params.erp`, and `Market.beta`; computes the one-period return from `price_start_next` and `price_end_next`; and recomputes listed Altman inputs from the `Financials` sheet. It fails generation if these values disagree with the workbook's formula results beyond tolerance.
 - The data builder independently computes Baseline and ESG-aware weighted expected/realized returns from their workbook weights and per-company returns, validates weight totals/bounds, then checks those aggregates against `Portfolio_Summary` before exporting them.
 - The displayed price return is `price_end_next / price_start_next - 1`; source values are described as 2025 prices, but the workbook/runtime payload currently lacks the dates of those two observations. It is not annualized, rolling, out-of-sample, or a live feed.
-- Baseline and ESG-aware weights and their summary returns are supplied by the workbook. The UI does not rerun Markowitz/COBYLA when sliders move; it snaps to one of two saved scenarios. A one-period return difference is descriptive and cannot validate the research hypothesis by itself.
-- ESGi, E/S/G pillars, approved OSINT, and portfolio weights are still source workbook values or demo records. The app must not label them as freshly computed/live.
+- The portfolio route computes preference-based suggested weights from selected 2024 records and current slider values. It does not currently run Markowitz/COBYLA or use a covariance matrix.
+- ESG pillar and total scores are recomputed from raw ESG indicators. The nine-company percentile scores are relative to this peer group and change if the group changes.
 - The OSINT LLM can propose category/severity only from provider-supplied title/excerpt text. The quote must be a literal substring of the excerpt. Reviewer action is session-local and cannot write an official score.
+
+## Input_Data_final workbook ingestion
+
+- `scripts/build-financial-engine-data.mjs` calculates market capitalization, X1–X5, Altman Z and zone, the workbook's linear R_fin map, maximum included OSINT penalty by forecast year, CAPM expected return, adjusted-price period return, and E/S/G from `GOC_ZSCORE`, `GOC_RREAL`, `GOC_ESG`, `Params`, and `OSINT_Events`.
+- It independently recomputes ESG peer percentile scores per indicator from the raw ESG observations. Numeric N/A values are excluded from that indicator's ranking; Boolean N/A values count as zero. Pillars use the workbook's 40/35/25 weights. The nine-company peer universe makes the scores relative, not absolute.
+- Calculated metrics are reconciled against cached results in `TINH_TONG_HOP` and `ESG_Scores`. The cached sheets are validation targets only and are not used as model inputs.
+- The workbook has four annual price-period observations per company, not a documented daily/monthly series. This is inadequate to publish a 9-asset covariance optimizer as validated. The API reports `optimizerReadiness.ready=false` until a dated adjusted-price series and approved coefficients are supplied.
+- Raw rows preserve workbook cell provenance but do not have per-field primary-source URLs. Beta, Rf, and MRP are supplied values whose calculation windows and retrieval dates still need source review. The workbook includes 2024 data paired with 2025 forecast/outcome fields; these are historical outcomes, not current forward estimates.
+- `GET /api/v1/financial-engine?data_year=2024&ticker=VNM` returns the recalculated record and its limitations. The portfolio builder and stock list consume these records; other assessment screens still use their existing data path.
+
+## ViFinQA reuse
+
+The local ViFinQA project is useful as an extraction and validation reference, especially for mapping Vietnamese annual-report rows to stable account concepts and preserving consolidated/separate report metadata. Its generated facts include accounting-identity and cross-year checks; those are suitable patterns for QC in this engine, not proof that every OCR fact is correct.
+
+Do not bulk-copy the local corpus or its extracted statements into this product yet. The ViFinQA README identifies the underlying TiniX OCR statements as CC BY-NC 4.0 and says the question annotations have no separate license. Use the parser/QC approach first; obtain an appropriate data license before any commercial or redistributed use. For each imported value, retain the source report, statement type, page/table, account code or normalized label, unit scale, period, and review status.
