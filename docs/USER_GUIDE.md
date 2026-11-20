@@ -35,13 +35,14 @@ Mở `http://localhost:3000`. Kiểm tra FastAPI tại `http://127.0.0.1:8000/he
 ## 4. Dùng trang Danh mục
 
 1. Chọn mã ở `/stocks`; mở **Danh mục** (`/portfolio`).
-2. Chọn mã, tổng vốn và mức ưu tiên. Giao diện tính tỷ trọng theo thứ hạng chuẩn hoá và giới hạn từng mã; đây là gợi ý phân bổ, không phải nghiệm Markowitz.
-3. Đọc lợi suất kỳ vọng CAPM và lợi suất giá lịch sử riêng biệt. Con số biến động tham chiếu áp dụng lợi suất lịch sử vào tỷ trọng hiện tại; không phải lợi nhuận đảm bảo hay dự báo.
-4. Chưa có chuỗi giá tháng/ngày để lập covariance; web chưa chạy COBYLA/QUBO/QAOA. Không trình bày tỷ trọng hiện tại là kết quả solver lượng tử.
+2. Chọn mã, vốn và mục tiêu danh mục. Phân bổ tự động được tính từ dữ liệu của các mã; để tính phương án Markowitz + ESG, đặt γ (mức ưu tiên ESG), δ (mức phạt rủi ro tài chính) rồi chọn **Tính đề xuất**.
+3. So sánh tỷ trọng Markowitz + ESG với Markowitz cơ bản, cùng CAPM, ESGi, RFin, biến động và độ phủ dữ liệu giá. **Dùng tỷ trọng này** áp dụng phương án; có thể quay lại phân bổ tự động bất cứ lúc nào.
+4. Mô hình cần 3–9 mã do giới hạn 2%–40% mỗi mã. Nó dùng tối đa 36 tháng giá kết thúc tại năm dữ liệu đã chọn; mã thiếu lịch sử có thể khiến phép tính không khả thi.
+5. Bộ dữ liệu hiện có kết quả lịch sử đến 2025. Lợi suất lịch sử được dùng trong báo cáo đánh giá, không hiển thị như lợi nhuận dự kiến trong luồng tạo danh mục.
 
 ## 5. Cách diễn giải lợi suất
 
-CAPM là mức lợi suất kỳ vọng tính theo β và phần bù rủi ro; lợi suất giá lịch sử là kết quả của kỳ giá trong workbook. Con số biến động tham chiếu chỉ áp lợi suất lịch sử vào tỷ trọng hiện tại. Một kỳ dữ liệu không chứng minh mô hình sinh lời tốt hơn, và không nên gọi là backtest ngoài mẫu.
+CAPM là mức lợi suất tham chiếu tính theo β và phần bù rủi ro ở năm dữ liệu đang chọn. Hiệu quả quá khứ được trình bày riêng trong báo cáo đánh giá; không diễn giải thành lợi nhuận tương lai.
 
 ## 6. Nạp PDF thẩm định nội bộ
 
@@ -57,7 +58,8 @@ Mở `/report/VNM` hoặc thay ticker bằng mã analysis-ready. Kiểm tra ngu�
 ## 8. Những điểm cần nói rõ trong buổi demo
 
 - Giá và báo cáo tài chính là dữ liệu workbook; không phải feed thị trường realtime.
-- Portfolio dùng phân bổ theo thứ hạng và mức ưu tiên; không chạy Markowitz/COBYLA/QUBO/QAOA.
+- Danh mục có phân bổ tự động và phương án tối ưu Markowitz + ESG bằng SLSQP cổ điển. Chưa có QUBO/QAOA.
+- γ và δ là hai tham số điều chỉnh của notebook; λ được tính từ MRP và phương sai VN-Index. Bộ γ=0,30, δ=0,25 được chọn ex-post nên chưa chứng minh hiệu quả tương lai.
 - Return lịch sử là phép tính trên một cặp giá, không phải backtest rolling/out-of-sample.
 - OSINT quét theo khung người dùng chọn đến hôm nay; kết quả mới là candidate cần người duyệt và chỉ áp dụng rủi ro trong phiên.
 - ESGi là điểm phân vị công bố 32 chỉ tiêu trong nhóm hiện tại, không phải kết quả phát hiện tẩy xanh bằng NLP. Chưa có cặp bằng chứng đã kiểm chứng nên rủi ro tẩy xanh để "chưa đánh giá".

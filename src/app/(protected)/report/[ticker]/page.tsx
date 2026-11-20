@@ -161,8 +161,8 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
 
         <ReportSection n={6} title="Khuyến nghị tỷ trọng">
           <p>
-            Không có tỷ trọng cố định cho {company.ticker}: tỷ trọng phụ thuộc các mã nhà đầu tư chọn và mức ưu tiên ở trang{" "}
-            <Link href="/portfolio" className="underline">Tạo danh mục</Link> (dữ liệu năm {method.dataYear}, so với lợi suất giá lịch sử năm {method.forecastYear}).
+            Tỷ trọng danh mục được tính từ dữ liệu tài chính, mức rủi ro và mục tiêu đầu tư. Mở{" "}
+            <Link href="/portfolio" className="underline">Danh mục</Link> để chọn các mã và xem phân bổ đề xuất.
           </p>
         </ReportSection>
 

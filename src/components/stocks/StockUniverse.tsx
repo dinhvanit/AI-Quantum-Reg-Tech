@@ -76,7 +76,7 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
           <h2 className="text-lg font-semibold">Danh sách cổ phiếu</h2>
           <p className="text-sm text-muted-foreground">Tìm trong danh sách đã cấu hình, mở hồ sơ doanh nghiệp hoặc chọn mã cho danh mục.</p>
         </div>
-          <Badge variant="outline">{items.length} mã có dữ liệu năm 2024 · {pendingTickers.length} mã chờ dữ liệu</Badge>
+          <Badge variant="outline">{items.length} mã có dữ liệu · {pendingTickers.length} mã chờ dữ liệu</Badge>
       </header>
 
       <DashboardCard title="Thêm mã cổ phiếu" description="Đăng ký mã ngoài bộ dữ liệu hiện có. Cần nguồn tham chiếu; mã mới sẽ ở trạng thái chờ cho tới khi bổ sung và kiểm tra dữ liệu tài chính, thị trường và ESG.">
@@ -133,7 +133,7 @@ export function StockUniverse({ items }: { items: CompanyOverview[] }) {
         </div>
       </DashboardCard>
 
-      <p className="text-xs text-muted-foreground">Tỷ trọng được hệ thống tính lại theo các mã và mức ưu tiên anh chọn ở trang danh mục.</p>
+      <p className="text-xs text-muted-foreground">Xem tỷ trọng đề xuất cho các mã đã chọn tại trang Danh mục.</p>
     </div>
   );
 }

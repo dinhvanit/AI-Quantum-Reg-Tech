@@ -137,7 +137,7 @@ Kết quả Cổng 2 (`PrivateAnalysis` – `src/lib/types.ts`) = dạng trên +
 
 ## 6. Còn thiếu & cần nhóm quyết định
 
-- **Tối ưu danh mục:** chưa có chuỗi giá tháng/ngày → chưa có ma trận hiệp phương sai Σ; hệ số QUBO (q, λ1, λ2, λ3, γ) chưa chốt. Trang `/portfolio` dùng phân bổ theo mức ưu tiên (không phải Markowitz/QUBO/QAOA).
+- **Tối ưu danh mục:** API `/api/v1/portfolio/optimize` dùng `data/market_prices_monthly.csv` để ước lượng covariance trên cửa sổ 36 tháng và chạy Markowitz + ESG bằng SLSQP, giới hạn 2%–40%. Đây chưa phải QUBO/QAOA; kết quả lịch sử được lưu trong báo cáo đánh giá riêng.
 - **Kịch bản Baseline / ESG-aware** và **mẫu Cổng 2 (TH)** của workbook cũ không còn nguồn → đã bỏ khỏi UI.
 - **Điểm tẩy xanh, Minh bạch, Tuân thủ**: workbook mới không có → `TODO`.
 - Danh sách số liệu cần nhóm tài chính kiểm lại: xem báo cáo rà soát workbook trong lịch sử trao đổi / `docs/DEMO_STATUS.md`.

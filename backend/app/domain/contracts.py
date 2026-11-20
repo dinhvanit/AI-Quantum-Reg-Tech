@@ -46,6 +46,14 @@ class OsintScanRequest(BaseModel):
     year: int | None = Field(default=None, ge=2000, le=2100)
 
 
+class PortfolioOptimizeRequest(BaseModel):
+    data_year: int = Field(ge=2021, le=2024)
+    tickers: list[str] = Field(min_length=3, max_length=9)
+    gamma: float = Field(ge=0, le=0.3)
+    delta: float = Field(ge=0, le=0.3)
+    accepted_osint_levels: dict[str, int] = Field(default_factory=dict)
+
+
 class DocumentLine(BaseModel):
     page: int = Field(ge=1, le=500)
     text: str = Field(min_length=1, max_length=1200)

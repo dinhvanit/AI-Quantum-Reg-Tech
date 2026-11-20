@@ -81,10 +81,6 @@ export default async function CompanyPage(props: PageProps<"/company/[ticker]">)
               <dt className="text-muted-foreground">β</dt>
               <dd className="font-mono font-semibold tabular">{formatNumber(company.beta, 3)}</dd>
             </div>
-            <div>
-              <dt className="text-muted-foreground">Lợi suất lịch sử ({method.forecastYear})</dt>
-              <dd className="font-mono font-semibold tabular">{formatPct(company.realizedReturn, 2, true)}</dd>
-            </div>
           </dl>
         </div>
         <CompanyActions ticker={company.ticker} />
