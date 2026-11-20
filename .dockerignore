@@ -19,3 +19,5 @@ backend/tests
 backend/universe.sqlite3
 **/__pycache__
 data/*.xlsx
+!data/QuantumRegTech_Input_Data_final.xlsx
+data/generated

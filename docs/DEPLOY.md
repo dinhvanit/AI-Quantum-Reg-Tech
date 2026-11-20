@@ -6,6 +6,7 @@ Frontend (Next.js) và backend (FastAPI) deploy ở hai nơi riêng, mỗi nơi 
 |---|---|---|---|
 | Frontend – Next.js | Vercel | [`.env.example`](../.env.example) | `.env.local` ở gốc repo |
 | Backend – FastAPI + LangGraph | Container host (Render, Railway, Fly.io, Cloud Run…) | [`backend/.env.example`](../backend/.env.example) | `backend/.env` |
+| Auth DB – Postgres | Neon | (`DATABASE_URL` trong file frontend) | — |
 | Neo4j | Neo4j Aura | (biến nằm trong file backend) | — |
 
 Không upload file `.env*`, không đưa key vào image hay biến `NEXT_PUBLIC_*`. Backend đọc theo thứ tự: env thật của host → `backend/.env` → `.env.local` ở root (fallback cho máy cũ dùng một file chung); biến đã có không bị ghi đè.
@@ -14,7 +15,7 @@ Không upload file `.env*`, không đưa key vào image hay biến `NEXT_PUBLIC_
 
 **Backend trước, frontend sau.** Các trang Next.js được prerender lúc `next build`. Khi `NEXT_PUBLIC_USE_MOCK=false`, build gọi `NEXT_PUBLIC_API_URL` để lấy dữ liệu; backend không truy cập được thì build fail (`TypeError: fetch failed … Failed to collect page data for /report/[ticker]`). Hệ quả thêm: số liệu trên các trang là bản chụp lúc build – đổi dữ liệu backend thì redeploy frontend.
 
-1. `npm run data` – sinh `data/generated/*.json` (image backend copy thư mục này).
+1. Neon: tạo database, chạy migration và seed user demo (mục 3a).
 2. Build và deploy backend, cấu hình biến ở mục 2, kiểm tra `GET /health`.
 3. Đặt biến frontend ở mục 3 trên Vercel, deploy.
 4. Cập nhật `CORS_ORIGINS` của backend bằng domain Vercel thật, restart backend.
@@ -23,10 +24,13 @@ Không upload file `.env*`, không đưa key vào image hay biến `NEXT_PUBLIC_
 ## 2. Backend
 
 ```bash
-npm run data
 docker build -f backend/Dockerfile -t quantumregtech-api .     # context = gốc repo, lọc bởi /.dockerignore
 docker run --env-file backend/.env -p 8000:8000 quantumregtech-api   # chạy thử local
 ```
+
+Dockerfile có 2 stage: stage Node chạy `scripts/build-financial-engine-data.mjs` + `scripts/build-data.mjs` trên `data/QuantumRegTech_Input_Data_final.xlsx` để sinh `data/generated/*.json` (thư mục này bị gitignore nên host build từ Git như Render không có sẵn), stage Python chỉ copy JSON đã sinh. Không cần chạy `npm run data` trước khi build.
+
+**Render:** New → Blueprint → chọn repo (đọc [`render.yaml`](../render.yaml)), hoặc New → Web Service → Docker với *Dockerfile Path* `./backend/Dockerfile`, *Docker Build Context* `.`, *Health Check Path* `/health`. Nhập secret (`CORS_ORIGINS`, `FIRECRAWL_API_KEY`, `GROQ_API_KEY`/`GEMINI_API_KEY`, `NEO4J_*` nếu dùng) trong dashboard. Gói Free ngủ sau ~15 phút không có request: lần gọi đầu chờ ~1 phút, Vercel build có thể fail `fetch failed` nếu backend đang ngủ → gọi `/health` trước khi redeploy frontend, hoặc dùng gói trả phí. Gói Free không có persistent disk → registry SQLite và job OSINT mất khi restart.
 
 Container lắng nghe `$PORT` (mặc định 8000); đa số host tự cấp biến này. Job OSINT lưu trong bộ nhớ tiến trình: chạy **1 instance, 1 worker**; restart/redeploy làm mất job đang chạy (job phía Firecrawl vẫn tính credit).
 
@@ -44,7 +48,16 @@ Container lắng nghe `$PORT` (mặc định 8000); đa số host tự cấp bi�
 | Registry | `DATA_VERSION`, `METHODOLOGY_VERSION`, `GENERATED_DATA_DIR` | Không | Để mặc định |
 | SSI | `SSI_API_KEY`, `SSI_API_SECRET`, `SSI_API_BASE_URL` | Chưa | Adapter chưa kích hoạt |
 
-Đổi `data/QuantumRegTech_Input_Data_final.xlsx` → `npm run data` → build lại image (dữ liệu nằm trong image).
+Đổi `data/QuantumRegTech_Input_Data_final.xlsx` → commit/push → Render tự build lại image (dữ liệu nằm trong image) → redeploy frontend.
+
+## 3a. Auth DB (Neon)
+
+Chỉ frontend dùng Neon (Auth.js: bảng `users`, `accounts`, `sessions`, `verification_token`); backend không kết nối Postgres.
+
+1. Tạo project Neon, lấy connection string **pooled** (`…-pooler…`, có `sslmode=require`).
+2. Chạy [`database/migrations/001_auth.sql`](../database/migrations/001_auth.sql) trong Neon SQL Editor (hoặc `psql "$DATABASE_URL" -f database/migrations/001_auth.sql`). Script idempotent.
+3. Seed tài khoản demo: đặt `DATABASE_URL`, `DEMO_AUTH_EMAIL`, `DEMO_AUTH_PASSWORD` trong `.env.local` rồi `npm run db:seed-demo`.
+4. Đặt `DATABASE_URL` trên Vercel (mục 3). Đăng nhập Google: thêm `https://<domain>/api/auth/callback/google` vào Authorized redirect URI.
 
 ## 3. Frontend (Vercel)
 

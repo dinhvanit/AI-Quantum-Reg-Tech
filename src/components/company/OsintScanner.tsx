@@ -59,7 +59,12 @@ export function OsintScanner({ ticker, year, rfinBase, workbookLevel, penaltyTab
   const [meta, setMeta] = useState<ScanPayload>({});
   const [elapsed, setElapsed] = useState(0);
   const cancelled = useRef(false);
-  useEffect(() => () => { cancelled.current = true; }, []);
+  // Đặt lại cờ khi mount: React StrictMode (dev) mount → unmount → mount, nếu không reset thì cờ kẹt ở true
+  // và vòng poll thoát ngay với "Đã rời trang".
+  useEffect(() => {
+    cancelled.current = false;
+    return () => { cancelled.current = true; };
+  }, []);
 
   /** POST bắt đầu job; nếu backend trả scan_id thì hỏi trạng thái tới khi xong. Fallback workbook trả kết quả ngay. */
   async function runScan(): Promise<ScanPayload> {

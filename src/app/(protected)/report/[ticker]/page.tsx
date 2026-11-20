@@ -176,6 +176,10 @@ export default async function ReportPage(props: PageProps<"/report/[ticker]">) {
               <span className="font-mono">{method.altman}</span> – {method.altmanZones}.
             </li>
             <li>Điểm phạt POSINT: {method.posintTiers}.</li>
+            <li>
+              Hạn chế ESG: các chỉ tiêu tuyệt đối (E_01, E_06, E_08, S_01) thiên lệch theo quy mô doanh nghiệp; chỉ tiêu số bị N/A
+              được loại khỏi xếp hạng thay vì bị trừ điểm (vd. IDP chỉ được chấm trên 4–6 chỉ tiêu số).
+            </li>
             <li>Nguồn: {method.dataSource}.</li>
             <li>Trường dữ liệu chưa được xác nhận hiển thị bằng “—”.</li>
           </ul>

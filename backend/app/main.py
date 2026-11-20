@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 # Import config first so backend/.env (or the legacy root .env.local) is loaded before service modules.
 from app.core.config import CORS_ORIGINS  # noqa: E402
@@ -33,6 +34,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    # The backend has no UI; send browsers to the interactive API docs.
+    return RedirectResponse("/docs")
 
 
 @app.get("/health", tags=["system"])

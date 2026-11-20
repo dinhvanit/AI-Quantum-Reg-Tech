@@ -32,7 +32,6 @@ Copy `backend/.env.example` to `backend/.env` (ignored by Git). Load order: real
 ## Deploy (separate from the frontend)
 
 ```bash
-npm run data                                            # data/generated/*.json is copied into the image
 docker build -f backend/Dockerfile -t quantumregtech-api .   # context = repo root, filtered by /.dockerignore
 docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
 ```
@@ -40,7 +39,7 @@ docker run --env-file backend/.env -p 8000:8000 quantumregtech-api
 - Inject variables from `backend/.env.example` through the host's env/secret manager; the image contains no `.env`. The container listens on `$PORT` (default 8000).
 - Set `CORS_ORIGINS` to the frontend origin(s), e.g. `https://<app>.vercel.app`.
 - The SQLite registry (`UNIVERSE_DB_PATH`) is lost on redeploy unless it points to a mounted volume.
-- Workbook changes require `npm run data` and a new image.
+- The Dockerfile generates `data/generated/*.json` from the workbook in a Node build stage (the folder is gitignored, so Git-based hosts such as Render need this). Workbook changes require a new image. Render: see `render.yaml`.
 - Health check: `GET /health`. Full checklist: [`docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 The connected Aura database currently contains no nodes. To deliberately load the four workbook companies and the workbook OSINT event as `demo=true`, run:
