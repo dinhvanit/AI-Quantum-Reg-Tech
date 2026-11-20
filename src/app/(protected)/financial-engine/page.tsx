@@ -40,16 +40,16 @@ export default async function FinancialEnginePage() {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card><CardHeader><CardDescription>Doanh nghiệp</CardDescription><CardTitle>{records.length} / 9 mã</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Bộ dữ liệu 2021–{Math.max(...payload.periods)}</CardContent></Card>
+        <Card><CardHeader><CardDescription>Doanh nghiệp</CardDescription><CardTitle>{records.length} mã</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Bộ dữ liệu 2021–{Math.max(...payload.periods)}</CardContent></Card>
         <Card><CardHeader><CardDescription>Đối chiếu công thức</CardDescription><CardTitle className="text-emerald-700">{payload.reconciliation.status === "passed" ? "Đạt" : "Cần rà soát"}</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">{payload.reconciliation.metricsPerRecord} chỉ số / mỗi dòng</CardContent></Card>
-        <Card><CardHeader><CardDescription>ESG trung bình</CardDescription><CardTitle>{formatNumber(meanEsg, 4)} / 1</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Phân vị tương đối trong nhóm 9 doanh nghiệp</CardContent></Card>
+        <Card><CardHeader><CardDescription>ESG trung bình</CardDescription><CardTitle>{formatNumber(meanEsg, 4)} / 1</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Phân vị tương đối trong nhóm {records.length} doanh nghiệp</CardContent></Card>
         <Card><CardHeader><CardDescription>Tối ưu danh mục</CardDescription><CardTitle>{payload.optimizerReadiness.ready ? "Sẵn sàng" : "Chưa đủ dữ liệu"}</CardTitle></CardHeader><CardContent className="text-xs text-muted-foreground">Chưa tính tỷ trọng cuối cùng</CardContent></Card>
       </section>
 
       <Card className="border-amber-500/30 bg-amber-500/5">
         <CardHeader className="flex flex-row items-start gap-3">
           <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" />
-          <div className="space-y-1"><CardTitle className="text-base">Chưa công bố tỷ trọng tối ưu</CardTitle><CardDescription>Giá đầu và cuối năm chỉ dùng để đối chiếu lợi suất lịch sử, chưa đủ ước lượng ma trận hiệp phương sai tin cậy cho 9 mã.</CardDescription></div>
+          <div className="space-y-1"><CardTitle className="text-base">Chưa công bố tỷ trọng tối ưu</CardTitle><CardDescription>Giá đầu và cuối năm chỉ dùng để đối chiếu lợi suất lịch sử, chưa đủ ước lượng ma trận hiệp phương sai tin cậy cho {records.length} mã.</CardDescription></div>
         </CardHeader>
         <CardContent className="space-y-1 text-sm text-muted-foreground">
           {optimizationGaps.map((item) => <p key={item}>• {item}</p>)}
@@ -59,13 +59,13 @@ export default async function FinancialEnginePage() {
       <Card>
         <CardHeader>
           <CardTitle>Kết quả tính từ dữ liệu gốc</CardTitle>
-          <CardDescription>Đầu vào năm 2024 dùng cho năm dự báo 2025. Lợi suất thực tế là kết quả quá khứ, không phải lợi suất kỳ vọng.</CardDescription>
+          <CardDescription>Đầu vào năm 2024 · đối chiếu với lợi suất giá lịch sử năm 2025.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader><TableRow>
               <TableHead>Mã</TableHead><TableHead>Điểm Altman Z</TableHead><TableHead>Vùng rủi ro</TableHead><TableHead>Rủi ro tài chính tổng</TableHead>
-              <TableHead>Lợi suất kỳ vọng theo CAPM</TableHead><TableHead>Điểm ESG</TableHead><TableHead>Môi trường / Xã hội / Quản trị</TableHead><TableHead>Lợi suất thực tế 2025</TableHead>
+              <TableHead>Lợi suất kỳ vọng theo CAPM</TableHead><TableHead>Điểm ESG</TableHead><TableHead>Môi trường / Xã hội / Quản trị</TableHead><TableHead>Lợi suất giá lịch sử 2025</TableHead>
             </TableRow></TableHeader>
             <TableBody>{records.map((record) => {
               const { altman, returns, esg } = record.calculated;

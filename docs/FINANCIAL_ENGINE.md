@@ -47,7 +47,7 @@ Use the Z′ zones documented by the private-company methodology in code. Do not
 Ri = Rf + βi × MRP
 ```
 
-Use annual risk-free rate `Rf`, beta `βi`, and market risk premium `MRP` with source and as-of date/year. Workbook methodology currently references Rf 2.77% and ERP/MRP 8.35% from specific sources/periods; these are not universal defaults. If a required input is missing or period-incompatible, return unavailable rather than silently reusing a prior year.
+Use annual risk-free rate `Rf`, beta `βi`, and market risk premium `MRP` with source and as-of date/year. In the current workbook, 2024 inputs for forecast 2025 are `Rf = 3.068%` (Vietnam 10-year government bond yield at 31/12/2024) and `MRP = 8.35%` (Damodaran, NYU Stern). The older `Rf = 2.77%` label was removed because it did not match the selected workbook input. This explains the change from the older appendix; it is not a universal default. Recheck the source observations before presenting these as independently verified market data.
 
 ## RFin base
 
@@ -79,9 +79,11 @@ Workbook policy tiers:
 | 3 | Prosecution, suspension, or severe event | +0.20 or approved policy value |
 
 ```text
-POSINT = sum(penalty for approved, active findings)
+POSINT = penalty_table[max(level for approved, active findings)]
 RFin_total = RFin_base + POSINT
 ```
+
+The workbook policy uses the highest included event level for a decision year; penalties are **not summed**. An article or allegation without a formal decision must not be described as a confirmed fine.
 
 POSINT is a policy penalty, not a probability. A news article alone cannot be promoted to a formal penalty. Current MCM event details/severity are documented as a data-quality decision in `docs/DATA.md`; preserve the selected workbook interpretation and warning unless a data owner changes it.
 

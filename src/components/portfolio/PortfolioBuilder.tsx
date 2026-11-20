@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Calculator, Check, Leaf, RotateCcw, ShieldCheck, TrendingUp } from "lucide-react";
 import { OsintScanner } from "@/components/company/OsintScanner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,7 +110,7 @@ function withAcceptedOsint(record: FinancialEngineRecord, accepted: number, pena
   };
 }
 
-export function PortfolioBuilder({ records, penaltyTable }: { records: FinancialEngineRecord[]; penaltyTable: Record<string, number> }) {
+export function PortfolioBuilder({ records, penaltyTable, osintPeriod }: { records: FinancialEngineRecord[]; penaltyTable: Record<string, number>; osintPeriod: { fromDate: string; toDate: string } }) {
   const years = useMemo(() => [...new Set(records.map((r) => r.dataYear))].sort((a, b) => a - b), [records]);
   const [dataYear, setDataYear] = useState(years[years.length - 1]);
   const forecastYear = dataYear + 1;
@@ -133,6 +132,7 @@ export function PortfolioBuilder({ records, penaltyTable }: { records: Financial
 
   const expected = selectedRecords.reduce((sum, record) => sum + (weights.get(record.ticker) ?? 0) * record.calculated.returns.capmExpected, 0);
   const historical = selectedRecords.reduce((sum, record) => sum + (weights.get(record.ticker) ?? 0) * record.calculated.returns.adjustedPricePeriod, 0);
+  const historicalChange = capital * historical;
   const esgTotal = selectedRecords.reduce((sum, record) => sum + (weights.get(record.ticker) ?? 0) * record.calculated.esg.total, 0);
   const riskTotal = selectedRecords.reduce((sum, record) => sum + (weights.get(record.ticker) ?? 0) * record.calculated.altman.rFinTotal, 0);
   const allocations = useMemo(() => {
@@ -166,7 +166,7 @@ export function PortfolioBuilder({ records, penaltyTable }: { records: Financial
       <header className="space-y-2">
         <p className="text-sm text-muted-foreground">Phân bổ vốn theo lựa chọn và mục tiêu đầu tư của anh</p>
         <h2 className="text-2xl font-semibold tracking-tight">Tạo danh mục đầu tư</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">Chọn năm dữ liệu, cổ phiếu, quy mô vốn và mức ưu tiên. Hệ thống dùng chỉ số năm {dataYear} để phân bổ và đối chiếu với lợi suất thực tế năm {forecastYear}.</p>
+        <p className="max-w-3xl text-sm text-muted-foreground">Chọn năm dữ liệu, cổ phiếu, quy mô vốn và mức ưu tiên. Đối chiếu phân bổ với lợi suất giá lịch sử năm {forecastYear}.</p>
         <div className="flex flex-wrap items-center gap-2 pt-1" role="group" aria-label="Năm dữ liệu">
           <span className="text-sm text-muted-foreground">Năm dữ liệu:</span>
           {years.map((year) => <Button key={year} size="sm" variant={year === dataYear ? "default" : "outline"} onClick={() => setDataYear(year)}>{year} → {year + 1}</Button>)}
@@ -241,22 +241,28 @@ export function PortfolioBuilder({ records, penaltyTable }: { records: Financial
           </Card>
 
           {selectedRecords.length > 0 && <div className="grid gap-3 sm:grid-cols-2">
-            <Metric label={`Lợi suất kỳ vọng CAPM (dữ liệu ${dataYear})`} value={formatPct(expected)} icon={TrendingUp} />
+            <Metric label={`Lợi suất kỳ vọng CAPM · ${dataYear}`} value={formatPct(expected)} icon={TrendingUp} />
             <Metric label="Điểm ESG danh mục" value={formatNumber(esgTotal, 3)} icon={Leaf} />
             <Metric label="Rủi ro tài chính bình quân" value={formatPct(riskTotal)} icon={ShieldCheck} />
-            <Metric label={`Lợi suất thực tế ${forecastYear}`} value={formatPct(historical)} icon={RotateCcw} />
+            <Metric label={`Lợi suất giá lịch sử · ${forecastYear}`} value={formatPct(historical)} icon={RotateCcw} />
           </div>}
 
-          <Alert>
-            <AlertDescription>Phương pháp: chuẩn hóa thứ hạng lợi suất, ESG và an toàn tài chính trong nhóm được chọn; kết hợp theo mức ưu tiên rồi phân bổ theo điểm, với trần mỗi mã. Đây là công cụ mô phỏng kịch bản, chưa dùng ma trận hiệp phương sai để tối ưu Markowitz. Lợi suất thực tế {forecastYear} là kết quả lịch sử để đối chiếu, không phải dự báo.</AlertDescription>
-          </Alert>
+          {selectedRecords.length > 0 && <div className="flex items-center justify-between gap-4 rounded-2xl border bg-primary/[0.035] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Biến động tham chiếu · {forecastYear}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">Vốn hiện tại theo tỷ trọng đã chọn</p>
+            </div>
+            <p className={`shrink-0 font-mono text-lg font-semibold tabular-nums ${historicalChange >= 0 ? "text-risk-safe" : "text-risk-distress"}`}>
+              {historicalChange >= 0 ? "+" : "−"}{formatMoney(Math.abs(historicalChange))} ₫
+            </p>
+          </div>}
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Kiểm tra OSINT năm {dataYear}</CardTitle>
-          <CardDescription>Sự kiện trong bộ dữ liệu đã được duyệt và đã tính sẵn. Firecrawl Agent tìm thêm sự kiện năm {dataYear} cho mã bạn chọn; chỉ sự kiện bạn chấp nhận mới cộng vào R_fin,total và làm đổi tỷ trọng (trong phiên này).</CardDescription>
+          <CardTitle>Theo dõi sự kiện xử phạt</CardTitle>
+          <CardDescription>Chọn khoảng thời gian quét đến hôm nay. Chỉ sự kiện bạn chấp nhận mới cập nhật mức rủi ro trong phiên.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {selectedRecords.length === 0 ? <p className="text-sm text-muted-foreground">Chọn cổ phiếu trước khi quét OSINT.</p> : <>
@@ -272,9 +278,10 @@ export function PortfolioBuilder({ records, penaltyTable }: { records: Financial
               const record = records.find((r) => r.dataYear === dataYear && r.ticker === osintTicker && selectedTickers.includes(r.ticker));
               if (!record) return <p className="text-xs text-muted-foreground">Chọn một mã để quét. Mỗi lượt quét là một job Firecrawl Agent (tốn credit, thường vài phút).</p>;
               return <OsintScanner
-                key={`${dataYear}:${record.ticker}`}
+                key={`${osintPeriod.fromDate}:${osintPeriod.toDate}:${record.ticker}`}
                 ticker={record.ticker}
-                year={dataYear}
+                fromDate={osintPeriod.fromDate}
+                toDate={osintPeriod.toDate}
                 rfinBase={record.calculated.altman.rFinBase}
                 workbookLevel={record.calculated.osint.penaltyLevel}
                 penaltyTable={penaltyTable}

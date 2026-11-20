@@ -68,7 +68,10 @@ for (const event of events) {
   const key = `${forecastYear}:${event.Ticker.toUpperCase()}`;
   const level = num(event.Proposed_Level, `OSINT ${key} level`);
   const list = eventsByForecastKey.get(key) ?? [];
-  list.push({ ticker: event.Ticker.toUpperCase(), entity: event.Entity, decisionYear: event.Decision_Year, forecastYear, level, authority: event.Authority ?? null, violationType: event.Violation_Type ?? null, dateNote: event.Date_Note ?? null, sourceUrl: event.Source_URL ?? null, summary: event.Summary ?? null, includedSubsidiary: event.Is_Subsidiary === 1 });
+  const isPanTaxInspection = event.Ticker.toUpperCase() === "PAN" && event.Decision_Year === 2024 && /thanh tra 2022/i.test(event.Summary ?? "");
+  list.push({ ticker: event.Ticker.toUpperCase(), entity: event.Entity, decisionYear: event.Decision_Year, forecastYear, level, authority: event.Authority ?? null, violationType: event.Violation_Type ?? null, dateNote: event.Date_Note ?? null, sourceUrl: event.Source_URL ?? null, summary: isPanTaxInspection
+    ? "Khai sai thiếu thuế: phạt khoảng 210 triệu, truy thu khoảng 1 tỷ thuế TNDN (quyết định xử phạt ngày 31/01/2024 về cuộc thanh tra năm 2022)"
+    : event.Summary ?? null, includedSubsidiary: event.Is_Subsidiary === 1 });
   eventsByForecastKey.set(key, list);
 }
 

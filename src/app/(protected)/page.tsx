@@ -57,8 +57,8 @@ export default async function DashboardPage() {
       {/* Lưới 2×2 */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DashboardCard
-          title={`Lợi suất kỳ vọng (CAPM ${method.dataYear}) và thực tế ${method.forecastYear}`}
-          description="Thực tế là lợi suất giá điều chỉnh trong năm dự báo – kết quả lịch sử, không phải dự báo"
+          title={`Lợi suất CAPM · Giá lịch sử ${method.dataYear}–${method.forecastYear}`}
+          description="Đối chiếu CAPM kỳ vọng với biến động giá điều chỉnh của năm kế tiếp."
           action={
             <Link href="/portfolio" className="text-xs font-semibold text-primary hover:underline">
               Tạo danh mục
@@ -67,14 +67,14 @@ export default async function DashboardPage() {
         >
           <table className="w-full text-xs">
             <thead className="text-muted-foreground">
-              <tr><th className="py-1 text-left font-medium">Mã</th><th className="py-1 text-right font-medium">Rᵢ (CAPM)</th><th className="py-1 text-right font-medium">Thực tế {method.forecastYear}</th></tr>
+              <tr><th className="py-1 text-left font-medium">Mã</th><th className="py-1 text-right font-medium">CAPM · {method.dataYear}</th><th className="py-1 text-right font-medium">Giá lịch sử · {method.forecastYear}</th></tr>
             </thead>
             <tbody className="font-mono tabular-nums">
               {returns.map(({ company }) => (
                 <tr key={company.ticker} className="border-t">
                   <td className="py-1 font-sans font-semibold">{company.ticker}</td>
                   <td className="py-1 text-right">{formatPct(company.expectedReturn)}</td>
-                  <td className="py-1 text-right">{formatPct(company.realizedReturn)}</td>
+                  <td className={`py-1 text-right ${company.realizedReturn >= 0 ? "text-risk-safe" : "text-risk-distress"}`}>{formatPct(company.realizedReturn)}</td>
                 </tr>
               ))}
             </tbody>
