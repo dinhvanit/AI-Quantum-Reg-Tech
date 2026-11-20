@@ -10,10 +10,10 @@ if (!connectionString) {
   throw new Error("DATABASE_URL must be configured to use authentication.");
 }
 
-const pool = new Pool({ connectionString });
+export const authPool = new Pool({ connectionString });
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: NeonAdapter(pool),
+  adapter: NeonAdapter(authPool),
   providers: [
     Google,
     Credentials({
@@ -28,7 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials.password ?? "");
         if (!email || !password) return null;
 
-        const result = await pool.query(
+        const result = await authPool.query(
           'SELECT id, name, email, image, "passwordHash" FROM users WHERE lower(email) = $1 LIMIT 1',
           [email],
         );
@@ -54,6 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorized: ({ auth, request }) =>
       request.nextUrl.pathname.startsWith("/api/auth/") ||
       request.nextUrl.pathname === "/login" ||
+      request.nextUrl.pathname === "/signup" ||
       Boolean(auth),
     session: ({ session, token }) => {
       if (session.user && token.sub) session.user.id = token.sub;
